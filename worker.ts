@@ -10,6 +10,12 @@ import extractedSectionsData from './extracted-sections.json';
 // Import deadline configuration
 import deadlineConfig from './deadline-config.json';
 
+interface DeadlineConfig {
+  submissionDeadline: string;
+  lastUpdated: string;
+  note: string;
+}
+
 interface SectionData {
   projectName: string;  // プロジェクト名
   applicantName: string;  // 申請者名
@@ -43,6 +49,23 @@ interface SectionData {
   section6: string;  // プロジェクト遂行にあたっての特記事項
   section7: string;  // ソフトウェア作成以外の勉強、特技、生活、趣味など
   section8: string;  // 将来のソフトウェア技術に対して思うこと・期待すること
+}
+
+/**
+ * Validates and sanitizes the deadline date string
+ * Security: Ensures the deadline is a valid ISO 8601 date to prevent injection attacks
+ */
+function sanitizeDeadline(deadline: string): string {
+  // Validate that it's a valid date string
+  const date = new Date(deadline);
+  if (isNaN(date.getTime())) {
+    // Fall back to a safe default if invalid
+    return '2026-12-31T23:59:59+09:00';
+  }
+  
+  // Return the validated ISO string, escaping for use in JavaScript context
+  // This prevents injection attacks by ensuring only valid date strings are used
+  return date.toISOString();
 }
 
 /**
@@ -161,6 +184,9 @@ ${escapeLatex(data.section8)}
  * Generates the HTML form page
  */
 function getHTMLPage(submissionDeadline: string): string {
+  // SECURITY: Sanitize the deadline to prevent XSS injection
+  const safeDeadline = sanitizeDeadline(submissionDeadline);
+  
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1210,7 +1236,7 @@ function getHTMLPage(submissionDeadline: string): string {
         // Function to calculate and update days left until deadline
         function updateDaysLeft() {
             const t = translations[currentLang];
-            const deadlineDate = new Date('${submissionDeadline}'); // Deadline from configuration
+            const deadlineDate = new Date('${safeDeadline}'); // Sanitized deadline from configuration
             const today = new Date();
             
             const diffTime = deadlineDate - today;

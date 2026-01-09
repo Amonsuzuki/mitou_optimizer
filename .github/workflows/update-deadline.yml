@@ -38,12 +38,13 @@ jobs:
             echo "updated=true" >> $GITHUB_OUTPUT
           else
             # For scheduled runs, read current deadline and check if update is needed
-            CURRENT_DEADLINE=$(node -p "require('./deadline-config.json').submissionDeadline")
-            echo "Current deadline: $CURRENT_DEADLINE"
+            echo "Current deadline check in progress..."
             
             # Check if deadline has passed using Node.js for cross-platform compatibility
+            # SECURITY: Use Node.js file reading to prevent shell injection
             DEADLINE_PASSED=$(node -e "
-              const deadline = new Date('$CURRENT_DEADLINE');
+              const config = require('./deadline-config.json');
+              const deadline = new Date(config.submissionDeadline);
               const now = new Date();
               console.log(deadline < now ? 'true' : 'false');
             ")
