@@ -226,40 +226,43 @@ function getHTMLPage(): string {
             justify-content: center;
             flex-wrap: wrap;
             border-bottom: 1px solid #e0e0e0;
-            position: relative;
         }
         
         .language-selector {
-            position: absolute;
+            position: fixed;
             right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
+            top: 20px;
             display: flex;
-            gap: 5px;
-            background: #f5f5f5;
-            padding: 5px;
-            border-radius: 6px;
+            gap: 8px;
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
         }
         
         .lang-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
+            padding: 8px 10px;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            font-size: 24px;
             cursor: pointer;
             transition: all 0.3s;
             background: transparent;
-            color: #666;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .lang-btn:hover {
-            background: #e0e0e0;
+            background: #f5f5f5;
+            transform: scale(1.1);
         }
         
         .lang-btn.active {
-            background: #667eea;
-            color: white;
+            border-color: #667eea;
+            background: #f0f4ff;
         }
         
         .action-btn {
@@ -627,7 +630,6 @@ function getHTMLPage(): string {
             
             .action-bar {
                 flex-direction: column;
-                padding-top: 60px;
             }
             
             .action-btn {
@@ -635,15 +637,25 @@ function getHTMLPage(): string {
             }
             
             .language-selector {
-                position: absolute;
                 right: 10px;
                 top: 10px;
-                transform: none;
+                padding: 6px;
+            }
+            
+            .lang-btn {
+                font-size: 20px;
+                padding: 6px 8px;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Language Selector - Fixed at top right -->
+    <div class="language-selector">
+        <button class="lang-btn" onclick="switchLanguage('ja')" id="langJa" title="日本語">🇯🇵</button>
+        <button class="lang-btn" onclick="switchLanguage('en')" id="langEn" title="English">🇺🇸</button>
+    </div>
+    
     <div class="top-bar">
         <div class="nav-tabs">
             <button class="nav-tab" data-tab="knowledge">General knowledge to pass MITOU</button>
@@ -658,10 +670,6 @@ function getHTMLPage(): string {
             <button class="action-btn" id="previewBtn" onclick="previewDocument()">Preview</button>
             <button class="action-btn primary" id="downloadLatexBtn" onclick="downloadLatex()">Download LaTeX</button>
             <button class="action-btn primary" id="downloadPdfBtn" onclick="downloadPDF()">Download PDF</button>
-            <div class="language-selector">
-                <button class="lang-btn" onclick="switchLanguage('ja')" id="langJa">日本語</button>
-                <button class="lang-btn" onclick="switchLanguage('en')" id="langEn">English</button>
-            </div>
         </div>
     </div>
     
