@@ -29,43 +29,59 @@ jobs:
           node-version: '18'
       
       - name: Update deadline configuration
+        id: update
         run: |
           # Get the new deadline from input or keep current for scheduled runs
           if [ -n "${{ github.event.inputs.deadline }}" ]; then
             NEW_DEADLINE="${{ github.event.inputs.deadline }}"
             echo "Using manual deadline: $NEW_DEADLINE"
+            echo "updated=true" >> $GITHUB_OUTPUT
           else
-            # For scheduled runs, read current deadline and optionally check if update is needed
+            # For scheduled runs, read current deadline and check if update is needed
             CURRENT_DEADLINE=$(node -p "require('./deadline-config.json').submissionDeadline")
             echo "Current deadline: $CURRENT_DEADLINE"
             
-            # Check if deadline has passed
-            CURRENT_TIMESTAMP=$(date -d "$CURRENT_DEADLINE" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S%z" "$CURRENT_DEADLINE" +%s)
-            NOW_TIMESTAMP=$(date +%s)
+            # Check if deadline has passed using Node.js for cross-platform compatibility
+            DEADLINE_PASSED=$(node -e "
+              const deadline = new Date('$CURRENT_DEADLINE');
+              const now = new Date();
+              console.log(deadline < now ? 'true' : 'false');
+            ")
             
-            if [ $CURRENT_TIMESTAMP -lt $NOW_TIMESTAMP ]; then
-              echo "Deadline has passed. Please update manually using workflow_dispatch."
+            if [ "$DEADLINE_PASSED" = "true" ]; then
+              echo "⚠️ Deadline has passed. Please update manually using workflow_dispatch."
+              echo "updated=false" >> $GITHUB_OUTPUT
               exit 0
             else
-              echo "Deadline has not passed yet. No update needed."
+              echo "✅ Deadline has not passed yet. No update needed."
+              echo "updated=false" >> $GITHUB_OUTPUT
               exit 0
             fi
           fi
           
-          # Update the configuration file
+          # Store the deadline for use in later steps
+          echo "deadline=$NEW_DEADLINE" >> $GITHUB_OUTPUT
+          
+          # Update the configuration file using Node.js for proper JSON handling
           LAST_UPDATED=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
-          cat > deadline-config.json << EOF
-          {
-            "submissionDeadline": "$NEW_DEADLINE",
-            "lastUpdated": "$LAST_UPDATED",
-            "note": "This file is automatically updated by GitHub Actions. The deadline represents the MITOU IT project submission deadline in Japan Time (JST)."
-          }
-          EOF
+          node -e "
+            const fs = require('fs');
+            const config = {
+              submissionDeadline: process.env.NEW_DEADLINE,
+              lastUpdated: process.env.LAST_UPDATED,
+              note: 'This file is automatically updated by GitHub Actions. The deadline represents the MITOU IT project submission deadline in Japan Time (JST).'
+            };
+            fs.writeFileSync('deadline-config.json', JSON.stringify(config, null, 2) + '\n');
+          " -- "$NEW_DEADLINE" "$LAST_UPDATED"
           
           echo "Updated deadline-config.json"
           cat deadline-config.json
+        env:
+          NEW_DEADLINE: ${{ github.event.inputs.deadline }}
+          LAST_UPDATED: ${{ steps.update.outputs.last_updated }}
       
       - name: Commit and push changes
+        if: steps.update.outputs.updated == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
@@ -77,16 +93,18 @@ jobs:
           fi
           
           git add deadline-config.json
-          git commit -m "chore: update submission deadline to ${{ github.event.inputs.deadline }}"
+          git commit -m "chore: update submission deadline to ${{ steps.update.outputs.deadline }}"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Create summary
+        if: steps.update.outputs.updated == 'true'
         run: |
           echo "### Deadline Update Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Deadline configuration updated successfully" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**New deadline:** ${{ github.event.inputs.deadline }}" >> $GITHUB_STEP_SUMMARY
+          echo "**New deadline:** ${{ steps.update.outputs.deadline }}" >> $GITHUB_STEP_SUMMARY
           echo "**Updated at:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+
