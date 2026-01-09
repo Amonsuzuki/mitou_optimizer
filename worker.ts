@@ -19,6 +19,45 @@ interface DeadlineConfig {
 // Type-safe deadline configuration
 const deadlineConfig = deadlineConfigRaw as DeadlineConfig;
 
+/**
+ * Environment bindings for Cloudflare Worker
+ */
+interface Env {
+  USERS_KV: KVNamespace;
+  MEMORIES_KV: KVNamespace;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+}
+
+/**
+ * User data stored in USERS_KV
+ */
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  createdAt: string;
+  lastLogin: string;
+}
+
+/**
+ * Draft data stored in MEMORIES_KV
+ */
+interface Draft {
+  userId: string;
+  data: SectionData;
+  updatedAt: string;
+}
+
+/**
+ * Session data
+ */
+interface Session {
+  userId: string;
+  expiresAt: number;
+}
+
 interface SectionData {
   projectName: string;  // プロジェクト名
   applicantName: string;  // 申請者名
@@ -189,6 +228,60 @@ ${escapeLatex(data.section8)}
 \\end{document}`;
 
   return latex;
+}
+
+/**
+ * Helper functions for authentication and session management
+ */
+
+// Generate a random state string for OAuth
+function generateState(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// Generate a random session token
+function generateSessionToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// Verify session token
+async function verifySession(env: Env, token: string): Promise<User | null> {
+  try {
+    const sessionData = await env.USERS_KV.get(`session:${token}`);
+    if (!sessionData) {
+      return null;
+    }
+    
+    const session: Session = JSON.parse(sessionData);
+    if (session.expiresAt < Date.now()) {
+      // Session expired
+      await env.USERS_KV.delete(`session:${token}`);
+      return null;
+    }
+    
+    const userData = await env.USERS_KV.get(`user:${session.userId}`);
+    if (!userData) {
+      return null;
+    }
+    
+    return JSON.parse(userData) as User;
+  } catch (error) {
+    console.error('Session verification error:', error);
+    return null;
+  }
+}
+
+// Get authorization header token
+function getAuthToken(request: Request): string | null {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  return authHeader.substring(7);
 }
 
 /**
@@ -639,6 +732,147 @@ function getHTMLPage(submissionDeadline: string): string {
             font-style: italic;
         }
         
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+        
+        .toast {
+            background: white;
+            border-radius: 8px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid #667eea;
+        }
+        
+        .toast.success {
+            border-left-color: #4caf50;
+        }
+        
+        .toast.error {
+            border-left-color: #f44336;
+        }
+        
+        .toast.warning {
+            border-left-color: #ff9800;
+        }
+        
+        .toast-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .toast-message {
+            flex: 1;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .toast-close:hover {
+            background: #f5f5f5;
+            color: #666;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: #f5f5f5;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+        
+        .user-email {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .login-btn {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #4285f4;
+            border-radius: 6px;
+            color: #4285f4;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .login-btn:hover {
+            background: #4285f4;
+            color: white;
+        }
+        
+        .login-btn img {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .logout-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            color: #666;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: #f5f5f5;
+            border-color: #999;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -679,10 +913,18 @@ function getHTMLPage(submissionDeadline: string): string {
                 top: 10px;
                 transform: none;
             }
+            
+            .user-info {
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Toast notification container -->
+    <div id="toastContainer" class="toast-container"></div>
+    
     <div class="top-bar">
         <div class="nav-tabs">
             <button class="nav-tab" data-tab="knowledge">General knowledge to pass MITOU</button>
@@ -690,10 +932,21 @@ function getHTMLPage(submissionDeadline: string): string {
             <button class="nav-tab" data-tab="examples">Successful applicants' examples</button>
         </div>
         <div class="action-bar">
+            <div id="userInfoContainer" style="display: none;">
+                <div class="user-info">
+                    <img id="userAvatar" class="user-avatar" src="" alt="User">
+                    <span id="userEmail" class="user-email"></span>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <button class="login-btn" id="loginBtn" onclick="login()" style="display: none;">
+                <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><path d="M17.6 9.2l-.1-1.8H9v3.4h4.8C13.6 12 13 13 12 13.6v2.2h3a8.8 8.8 0 0 0 2.6-6.6z" fill="#4285F4"/><path d="M9 18c2.4 0 4.5-.8 6-2.2l-3-2.2a5.4 5.4 0 0 1-8-2.9H1V13a9 9 0 0 0 8 5z" fill="#34A853"/><path d="M4 10.7a5.4 5.4 0 0 1 0-3.4V5H1a9 9 0 0 0 0 8l3-2.3z" fill="#FBBC05"/><path d="M9 3.6c1.3 0 2.5.4 3.4 1.3L15 2.3A9 9 0 0 0 1 5l3 2.4a5.4 5.4 0 0 1 5-3.7z" fill="#EA4335"/></g></svg>
+                Sign in with Google
+            </button>
             <button class="toggle-btn" id="aiReviewToggle" onclick="toggleAIReview()">
                 <span id="aiReviewLabel">AI review</span>: <span id="aiReviewStatus">OFF</span>
             </button>
-            <button class="action-btn disabled" id="saveBtn" title="Login required">Save</button>
+            <button class="action-btn disabled" id="saveBtn" onclick="saveDraft()" title="Login required">Save</button>
             <button class="action-btn" id="previewBtn" onclick="previewDocument()">Preview</button>
             <button class="action-btn primary" id="downloadLatexBtn" onclick="downloadLatex()">Download LaTeX</button>
             <button class="action-btn primary" id="downloadPdfBtn" onclick="downloadPDF()">Download PDF</button>
@@ -1453,6 +1706,44 @@ function getHTMLPage(submissionDeadline: string): string {
         window.PDF_INSTRUCTION_MSG = 'PDF生成機能：\\n\\nLaTeXファイルをダウンロードした後、以下のいずれかの方法でPDFに変換してください：\\n\\n1. Overleaf (https://www.overleaf.com/) にアップロードして自動コンパイル\\n2. ローカルのLaTeX環境で "platex" コマンドを使用\\n3. Cloud LaTeX などのオンラインサービスを利用\\n\\n最も簡単な方法はOverleafの利用です。まずLaTeXファイルをダウンロードしてください。';
         window.PREVIEW_COMING_SOON_MSG = 'プレビュー機能は開発中です。現在はLaTeXファイルをダウンロードして、Overleafなどのサービスでプレビューしてください。';
         
+        // Toast notification system
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            
+            const icons = {
+                success: '✓',
+                error: '✕',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+            
+            const icon = document.createElement('span');
+            icon.className = 'toast-icon';
+            icon.textContent = icons[type] || icons.info;
+            
+            const msg = document.createElement('span');
+            msg.className = 'toast-message';
+            msg.textContent = message;
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'toast-close';
+            closeBtn.textContent = '×';
+            closeBtn.onclick = function() { toast.remove(); };
+            
+            toast.appendChild(icon);
+            toast.appendChild(msg);
+            toast.appendChild(closeBtn);
+            container.appendChild(toast);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+        
         // Tab switching
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', function() {
@@ -1485,6 +1776,227 @@ function getHTMLPage(submissionDeadline: string): string {
                 toggleBtn.classList.remove('active');
             }
         }
+        
+        // Authentication and Draft Management
+        let currentUser = null;
+        let sessionToken = null;
+        
+        // Check authentication status on page load
+        async function checkAuth() {
+            const token = localStorage.getItem('sessionToken');
+            if (!token) {
+                showLoginButton();
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                if (response.ok) {
+                    const user = await response.json();
+                    currentUser = user;
+                    sessionToken = token;
+                    showUserInfo(user);
+                    enableSaveButton();
+                    await loadDraft();
+                } else {
+                    localStorage.removeItem('sessionToken');
+                    showLoginButton();
+                }
+            } catch (error) {
+                console.error('Auth verification failed:', error);
+                showLoginButton();
+            }
+        }
+        
+        // Show login button
+        function showLoginButton() {
+            document.getElementById('loginBtn').style.display = 'flex';
+            document.getElementById('userInfoContainer').style.display = 'none';
+        }
+        
+        // Show user info
+        function showUserInfo(user) {
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userAvatar').src = user.picture || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="%23667eea"/><text x="16" y="22" text-anchor="middle" fill="white" font-size="16">' + (user.name?.[0] || 'U') + '</text></svg>';
+            document.getElementById('loginBtn').style.display = 'none';
+            document.getElementById('userInfoContainer').style.display = 'block';
+        }
+        
+        // Enable save button
+        function enableSaveButton() {
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.classList.remove('disabled');
+            saveBtn.title = 'Save your draft';
+        }
+        
+        // Disable save button
+        function disableSaveButton() {
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.classList.add('disabled');
+            saveBtn.title = 'Login required';
+        }
+        
+        // Login with Google
+        async function login() {
+            try {
+                // Start OAuth flow
+                const response = await fetch('/api/auth/google/url');
+                const data = await response.json();
+                
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+                
+                if (data.authUrl) {
+                    // Redirect to Google OAuth
+                    window.location.href = data.authUrl;
+                }
+            } catch (error) {
+                console.error('Login failed:', error);
+                showToast('ログインに失敗しました。もう一度お試しください。 / Login failed. Please try again.', 'error');
+            }
+        }
+        
+        // Logout
+        async function logout() {
+            try {
+                if (sessionToken) {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + sessionToken
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Logout request failed:', error);
+            }
+            
+            currentUser = null;
+            sessionToken = null;
+            localStorage.removeItem('sessionToken');
+            showLoginButton();
+            disableSaveButton();
+            showToast('ログアウトしました。 / Logged out successfully.', 'success');
+        }
+        
+        // Save draft
+        async function saveDraft() {
+            if (!currentUser || !sessionToken) {
+                showToast('ログインが必要です。 / Please login to save your draft.', 'warning');
+                return;
+            }
+            
+            const form = document.getElementById('applicationForm');
+            const formData = new FormData(form);
+            const data = {};
+            
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            
+            try {
+                const response = await fetch('/api/drafts/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + sessionToken
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    showToast('下書きを保存しました。 / Draft saved successfully.', 'success');
+                } else {
+                    throw new Error('Failed to save draft');
+                }
+            } catch (error) {
+                console.error('Save draft failed:', error);
+                showToast('下書きの保存に失敗しました。 / Failed to save draft.', 'error');
+            }
+        }
+        
+        // Load draft
+        async function loadDraft() {
+            if (!currentUser || !sessionToken) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/drafts/load', {
+                    headers: {
+                        'Authorization': 'Bearer ' + sessionToken
+                    }
+                });
+                
+                if (response.ok) {
+                    const draft = await response.json();
+                    if (draft && draft.data) {
+                        // Populate form with draft data
+                        Object.keys(draft.data).forEach(key => {
+                            const field = document.getElementById(key);
+                            if (field && draft.data[key]) {
+                                field.value = draft.data[key];
+                                // Update localStorage as well
+                                localStorage.setItem(key, draft.data[key]);
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Load draft failed:', error);
+            }
+        }
+        
+        // Handle OAuth callback
+        async function handleOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            
+            if (code && state) {
+                try {
+                    const response = await fetch('/api/auth/google/callback', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ code, state })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        sessionToken = data.token;
+                        currentUser = data.user;
+                        localStorage.setItem('sessionToken', sessionToken);
+                        
+                        // Remove query parameters from URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        
+                        showUserInfo(currentUser);
+                        enableSaveButton();
+                        await loadDraft();
+                        showToast('ログインしました。 / Logged in successfully.', 'success');
+                    } else {
+                        throw new Error('Authentication failed');
+                    }
+                } catch (error) {
+                    console.error('OAuth callback failed:', error);
+                    showToast('認証に失敗しました。もう一度お試しください。 / Authentication failed. Please try again.', 'error');
+                }
+            }
+        }
+        
+        // Initialize authentication on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            handleOAuthCallback().then(() => checkAuth());
+        });
         
         // Section viewing functionality
         let sectionsData = null;
@@ -1660,15 +2172,241 @@ function getHTMLPage(submissionDeadline: string): string {
  * Main request handler
  */
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    
+    // CORS headers for API requests
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    };
+    
+    // Handle OPTIONS for CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+    
+    // Authentication endpoints
+    
+    // Get Google OAuth URL
+    if (url.pathname === '/api/auth/google/url') {
+      const state = generateState();
+      // Store state in KV with 10 minute expiration
+      await env.USERS_KV.put(`oauth_state:${state}`, Date.now().toString(), { expirationTtl: 600 });
+      
+      // Get Google Client ID from environment
+      const clientId = env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+      
+      // Warning: Check if client ID is configured
+      if (clientId === 'YOUR_GOOGLE_CLIENT_ID') {
+        return new Response(JSON.stringify({ 
+          error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID environment variable.' 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      const redirectUri = `${url.origin}/api/auth/google/callback`;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(clientId)}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `response_type=code&` +
+        `scope=${encodeURIComponent('openid email profile')}&` +
+        `state=${state}`;
+      
+      return new Response(JSON.stringify({ authUrl }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Google OAuth callback
+    if (url.pathname === '/api/auth/google/callback' && request.method === 'POST') {
+      try {
+        const { code, state } = await request.json() as any;
+        
+        // Verify state
+        const storedTime = await env.USERS_KV.get(`oauth_state:${state}`);
+        if (!storedTime) {
+          return new Response(JSON.stringify({ error: 'Invalid state' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        await env.USERS_KV.delete(`oauth_state:${state}`);
+        
+        // TODO: Complete Google OAuth implementation
+        // To fully implement Google OAuth, you need to:
+        // 1. Exchange the authorization code for an access token by calling:
+        //    POST https://oauth2.googleapis.com/token
+        //    with client_id, client_secret, code, redirect_uri, and grant_type=authorization_code
+        // 2. Use the access token to get user info from:
+        //    GET https://www.googleapis.com/oauth2/v2/userinfo
+        // 3. Store the user information in USERS_KV
+        //
+        // For now, this is a simplified mock implementation for demonstration purposes.
+        // Replace this section with actual Google API calls in production.
+        
+        const mockUserInfo = {
+          id: 'google_' + Date.now(),
+          email: 'user@example.com',
+          name: 'User',
+          picture: ''
+        };
+        
+        // Create or update user
+        const user: User = {
+          id: mockUserInfo.id,
+          email: mockUserInfo.email,
+          name: mockUserInfo.name,
+          picture: mockUserInfo.picture,
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString()
+        };
+        
+        await env.USERS_KV.put(`user:${user.id}`, JSON.stringify(user));
+        
+        // Create session
+        const sessionToken = generateSessionToken();
+        const session: Session = {
+          userId: user.id,
+          expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
+        };
+        
+        await env.USERS_KV.put(`session:${sessionToken}`, JSON.stringify(session), {
+          expirationTtl: 30 * 24 * 60 * 60 // 30 days
+        });
+        
+        return new Response(JSON.stringify({ token: sessionToken, user }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Authentication failed' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Verify session
+    if (url.pathname === '/api/auth/verify') {
+      const token = getAuthToken(request);
+      if (!token) {
+        return new Response(JSON.stringify({ error: 'No token provided' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      const user = await verifySession(env, token);
+      if (!user) {
+        return new Response(JSON.stringify({ error: 'Invalid session' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      return new Response(JSON.stringify(user), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Logout
+    if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
+      const token = getAuthToken(request);
+      if (token) {
+        await env.USERS_KV.delete(`session:${token}`);
+      }
+      
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Save draft
+    if (url.pathname === '/api/drafts/save' && request.method === 'POST') {
+      const token = getAuthToken(request);
+      if (!token) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      const user = await verifySession(env, token);
+      if (!user) {
+        return new Response(JSON.stringify({ error: 'Invalid session' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      try {
+        const data = await request.json() as any;
+        const draft: Draft = {
+          userId: user.id,
+          data: data as SectionData,
+          updatedAt: new Date().toISOString()
+        };
+        
+        await env.MEMORIES_KV.put(`draft:${user.id}`, JSON.stringify(draft));
+        
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Failed to save draft' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Load draft
+    if (url.pathname === '/api/drafts/load') {
+      const token = getAuthToken(request);
+      if (!token) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      const user = await verifySession(env, token);
+      if (!user) {
+        return new Response(JSON.stringify({ error: 'Invalid session' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      try {
+        const draftData = await env.MEMORIES_KV.get(`draft:${user.id}`);
+        if (!draftData) {
+          return new Response(JSON.stringify({ data: null }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const draft: Draft = JSON.parse(draftData);
+        return new Response(JSON.stringify(draft), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Failed to load draft' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
     
     // Handle request for extracted sections data
     if (url.pathname === '/api/sections') {
       return new Response(JSON.stringify(extractedSectionsData), {
         headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*'
+          ...corsHeaders,
+          'Content-Type': 'application/json; charset=utf-8'
         }
       });
     }
