@@ -1131,11 +1131,7 @@ function getHTMLPage(): string {
             const daysLeftElement = document.getElementById('daysLeft');
             
             if (diffDays > 0) {
-                if (currentLang === 'ja') {
-                    daysLeftElement.textContent = diffDays + t.daysLeftSuffix;
-                } else {
-                    daysLeftElement.textContent = diffDays + t.daysLeftSuffix;
-                }
+                daysLeftElement.textContent = diffDays + t.daysLeftSuffix;
             } else {
                 daysLeftElement.textContent = t.deadlinePassed;
                 daysLeftElement.style.fontSize = '24px';
