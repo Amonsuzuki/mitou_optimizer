@@ -12,6 +12,8 @@ This tool provides a user-friendly web interface for creating MITOU (未踏IT人
 - 🚀 **Hosted on Cloudflare Workers** for fast, global access
 - 📄 **LaTeX generation** with proper escaping and formatting
 - 💾 **Auto-save** functionality using localStorage
+- 👤 **Account registration and login** for cloud-based memory storage
+- ☁️ **Cloud memory storage** using Cloudflare KV to save your application data
 - 📱 **Responsive design** that works on desktop and mobile
 - 🎨 **Clean, modern UI** for better user experience
 
@@ -70,12 +72,55 @@ npm run dev
 npx wrangler login
 ```
 
-2. Deploy the worker:
+2. Create KV namespaces for storing user data and memories:
+```bash
+# Create production KV namespaces
+npx wrangler kv:namespace create "USERS_KV"
+npx wrangler kv:namespace create "MEMORIES_KV"
+
+# Create preview KV namespaces for development
+npx wrangler kv:namespace create "USERS_KV" --preview
+npx wrangler kv:namespace create "MEMORIES_KV" --preview
+```
+
+3. Update `wrangler.jsonc` with the KV namespace IDs from the output above:
+```jsonc
+{
+  "kv_namespaces": [
+    {
+      "binding": "USERS_KV",
+      "id": "your-production-id-here",
+      "preview_id": "your-preview-id-here"
+    },
+    {
+      "binding": "MEMORIES_KV",
+      "id": "your-production-id-here",
+      "preview_id": "your-preview-id-here"
+    }
+  ]
+}
+```
+
+4. Deploy the worker:
 ```bash
 npm run deploy
 ```
 
+**Note:** If you cannot create KV namespaces (e.g., due to account limitations or permissions), please inform the repository owner. The KV setup is required for account registration and memory storage features to work in production.
+
 ## Usage
+
+### Account Registration and Cloud Storage
+
+1. Click the "Login" button in the top navigation bar
+2. Click "Don't have an account? Register" to create a new account
+3. Fill in your username, email, and password
+4. After registration, login with your credentials
+5. Once logged in, the "Save" button becomes active
+6. Click "Save" to store your application data to the cloud
+7. Your data is securely stored in Cloudflare KV and can be accessed from any device
+
+### Creating Application Documents
 
 1. Access the web application
 2. Fill in all 8 sections with your project details
