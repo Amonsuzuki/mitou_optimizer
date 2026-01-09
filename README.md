@@ -12,8 +12,11 @@ This tool provides a user-friendly web interface for creating MITOU (未踏IT人
 - 🚀 **Hosted on Cloudflare Workers** for fast, global access
 - 📄 **LaTeX generation** with proper escaping and formatting
 - 💾 **Auto-save** functionality using localStorage
+- 🔐 **Google Account Authentication** for secure login
+- ☁️ **Cloud Draft Saving** - Save and sync your drafts across devices using Cloudflare KV
 - 📱 **Responsive design** that works on desktop and mobile
 - 🎨 **Clean, modern UI** for better user experience
+- ⏰ **Automatic deadline countdown** with GitHub Actions integration
 
 ## Sections
 
@@ -32,13 +35,17 @@ The application includes the following 8 sections as required by MITOU:
 
 ```
 mitou_optimizer/
-├── worker.ts           # Main Cloudflare Worker (backend + frontend)
-├── wrangler.jsonc      # Cloudflare Workers configuration
-├── package.json        # Project dependencies
-├── tsconfig.json       # TypeScript configuration
-├── .gitignore          # Git ignore rules
-├── README.md           # This file
-└── *.pdf              # Example successful application documents
+├── worker.ts              # Main Cloudflare Worker (backend + frontend)
+├── wrangler.jsonc         # Cloudflare Workers configuration
+├── deadline-config.json   # Submission deadline configuration
+├── package.json           # Project dependencies
+├── tsconfig.json          # TypeScript configuration
+├── .gitignore             # Git ignore rules
+├── .github/
+│   └── workflows/
+│       └── update-deadline.yml  # GitHub Actions workflow for deadline updates
+├── README.md              # This file
+└── *.pdf                  # Example successful application documents
 ```
 
 ## Setup and Deployment
@@ -71,7 +78,12 @@ If you add new PDF files to the `examples/open` or `examples/closed` directories
 python3 extract-pdf-sections.py
 ```
 
-This will update the `extracted-sections.json` file with content from all PDFs.
+This will:
+- Update the `extracted-sections.json` file with content from all PDFs
+- Create individual text files for each section of each person in `extracted_sections/` directory
+- Organize files by the 8 standard MITOU application sections
+
+**For detailed information about text extraction, see [EXTRACTION_GUIDE.md](EXTRACTION_GUIDE.md)**
 
 ### Deployment to Cloudflare Workers
 
@@ -80,7 +92,25 @@ This will update the `extracted-sections.json` file with content from all PDFs.
 npx wrangler login
 ```
 
-2. Deploy the worker:
+2. Configure Google OAuth (Required for authentication):
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+   - Enable the Google+ API
+   - Go to "Credentials" and create an OAuth 2.0 Client ID
+   - Add authorized redirect URI: `https://your-worker-domain.workers.dev/api/auth/google/callback`
+   - Copy the Client ID and Client Secret
+   - Update the `worker.ts` file to use your Client ID (search for `YOUR_GOOGLE_CLIENT_ID`)
+   - (Optional) Store the Client ID as a Cloudflare secret:
+     ```bash
+     echo "your-client-id-here" | npx wrangler secret put GOOGLE_CLIENT_ID
+     echo "your-client-secret-here" | npx wrangler secret put GOOGLE_CLIENT_SECRET
+     ```
+
+3. Verify KV namespaces are configured in `wrangler.jsonc`:
+   - `USERS_KV`: Stores user accounts and sessions
+   - `MEMORIES_KV`: Stores draft data for each user
+
+4. Deploy the worker:
 ```bash
 npm run deploy
 ```
@@ -90,12 +120,25 @@ npm run deploy
 ### Creating Your Application
 
 1. Access the web application
-2. Navigate to the "編集" (Editing) tab
-3. Fill in all 8 sections with your project details
-4. Optionally add your name
-5. Click "LaTeX生成・ダウンロード" to generate and download the LaTeX file
-6. Compile the LaTeX file using your preferred LaTeX compiler (e.g., platex, xelatex)
-7. The generated PDF is ready for submission
+2. **(Optional)** Sign in with Google to enable cloud draft saving
+3. Navigate to the "編集" (Editing) tab
+4. Fill in all 8 sections with your project details
+5. If logged in, click "Save" to save your draft to the cloud
+6. Click "Download LaTeX" or "Download PDF" to generate and download the LaTeX file
+7. Compile the LaTeX file using your preferred LaTeX compiler (e.g., platex, xelatex)
+8. The generated PDF is ready for submission
+
+### User Authentication & Cloud Storage
+
+The application now supports Google Account authentication for enhanced functionality:
+
+- **Sign in with Google**: Click the "Sign in with Google" button in the action bar
+- **Automatic Draft Sync**: Your draft is automatically saved to Cloudflare KV storage when you click "Save"
+- **Access Anywhere**: Sign in on any device to access your saved draft
+- **Secure Storage**: All user data and drafts are stored securely in Cloudflare KV
+- **Local Backup**: The application still uses localStorage for auto-save, even without login
+
+**Note**: You need to configure Google OAuth credentials before deployment. See the Configuration section below.
 
 ### Viewing Example Applications
 
@@ -129,12 +172,25 @@ The application now extracts and organizes content from these PDFs by section, m
 ## Technologies Used
 
 - **Cloudflare Workers**: Serverless platform for hosting
+- **Cloudflare KV**: Key-value storage for user data and drafts
 - **TypeScript**: Type-safe development
+- **Google OAuth 2.0**: Secure user authentication
 - **LaTeX**: Document generation format
 - **HTML/CSS/JavaScript**: Frontend interface
 - **Python/PyPDF2**: PDF text extraction for example documents
 
-## Features Detail
+## Architecture & Implementation
+
+### Authentication & Cloud Storage
+The application implements Google OAuth authentication and cloud-based draft storage. For detailed information about the authentication system, API endpoints, and security considerations, see [AUTHENTICATION.md](AUTHENTICATION.md).
+
+Key features:
+- Secure Google OAuth 2.0 authentication
+- Session management with automatic expiration
+- Cloud-based draft storage using Cloudflare KV
+- Cross-device synchronization
+
+### Features Detail
 
 ### Section-Based Example Viewing (New!)
 - Automatically extracts text from example PDF documents
@@ -153,6 +209,42 @@ The application now extracts and organizes content from these PDFs by section, m
 - Clear button with confirmation
 - Loading states and error handling
 - Responsive design for all screen sizes
+
+### Automatic Deadline Updates
+- Submission deadline is stored in `deadline-config.json`
+- GitHub Actions workflow automatically manages deadline updates
+- Manual updates via workflow_dispatch with custom deadline input
+- Monthly scheduled checks to verify deadline status
+- Displays countdown of days remaining until submission deadline
+- Supports both Japanese and English language display
+
+## Updating the Submission Deadline
+
+The submission deadline can be updated either manually or automatically:
+
+### Manual Update via GitHub Actions
+
+1. Navigate to the "Actions" tab in the GitHub repository
+2. Select "Update Submission Deadline" workflow
+3. Click "Run workflow"
+4. Enter the new deadline in ISO 8601 format with timezone (e.g., `2026-03-13T23:59:59+09:00`)
+5. Click "Run workflow" to execute
+
+The workflow will automatically update `deadline-config.json` and commit the changes.
+
+### Manual File Edit
+
+Alternatively, you can directly edit `deadline-config.json`:
+
+```json
+{
+  "submissionDeadline": "2026-03-13T23:59:59+09:00",
+  "lastUpdated": "2026-01-09T15:19:10.652Z",
+  "note": "This file is automatically updated by GitHub Actions..."
+}
+```
+
+After editing, commit and push the changes. The application will automatically use the new deadline.
 
 ## License
 

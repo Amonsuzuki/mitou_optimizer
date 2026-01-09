@@ -11,5 +11,5 @@
     "moduleResolution": "node",
     "resolveJsonModule": true
   },
-  "include": ["worker.ts", "extracted-sections.json"]
+  "include": ["worker.ts", "extracted-sections.json", "deadline-config.json"]
 }
