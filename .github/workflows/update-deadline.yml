@@ -62,15 +62,13 @@ jobs:
           # Store the deadline for use in later steps
           echo "deadline=$NEW_DEADLINE" >> $GITHUB_OUTPUT
           
-          # Update the configuration file using Node.js for proper JSON handling
-          LAST_UPDATED=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+          # Update the configuration file using Node.js for proper JSON handling and timestamp generation
           export NEW_DEADLINE
-          export LAST_UPDATED
           node -e "
             const fs = require('fs');
             const config = {
               submissionDeadline: process.env.NEW_DEADLINE,
-              lastUpdated: process.env.LAST_UPDATED,
+              lastUpdated: new Date().toISOString(),
               note: 'This file is automatically updated by GitHub Actions. The deadline represents the MITOU IT project submission deadline in Japan Time (JST).'
             };
             fs.writeFileSync('deadline-config.json', JSON.stringify(config, null, 2) + '\n');
@@ -94,8 +92,6 @@ jobs:
           git add deadline-config.json
           git commit -m "chore: update submission deadline to ${{ steps.update.outputs.deadline }}"
           git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Create summary
         if: steps.update.outputs.updated == 'true'
