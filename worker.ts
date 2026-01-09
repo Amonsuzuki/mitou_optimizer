@@ -1776,6 +1776,15 @@ function generateSessionToken(): string {
 }
 
 /**
+ * Generate a random ID for memories or other entities
+ */
+function generateId(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
  * Verify session token and return user info
  */
 async function verifySession(token: string, env: Env): Promise<Session | null> {
@@ -1977,7 +1986,7 @@ export default {
           section8: body.section8 || ''
         };
         
-        const memoryId = body.memoryId || generateSessionToken();
+        const memoryId = body.memoryId || generateId();
         const now = new Date().toISOString();
         
         const memory: Memory = {
@@ -2093,7 +2102,7 @@ export default {
     // Handle POST request to generate LaTeX
     if (url.pathname === '/generate' && request.method === 'POST') {
       try {
-        const data = await request.json() as any;
+        const data = await request.json() as Partial<SectionData>;
         
         const sectionData: SectionData = {
           projectName: data.projectName || '',
