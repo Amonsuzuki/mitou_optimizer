@@ -652,8 +652,8 @@ function getHTMLPage(): string {
 <body>
     <!-- Language Selector - Fixed at top right -->
     <div class="language-selector">
-        <button class="lang-btn" onclick="switchLanguage('ja')" id="langJa" title="日本語">🇯🇵</button>
-        <button class="lang-btn" onclick="switchLanguage('en')" id="langEn" title="English">🇺🇸</button>
+        <button class="lang-btn" onclick="switchLanguage('ja')" id="langJa" title="日本語" aria-label="Switch to Japanese">🇯🇵</button>
+        <button class="lang-btn" onclick="switchLanguage('en')" id="langEn" title="English" aria-label="Switch to English">🇺🇸</button>
     </div>
     
     <div class="top-bar">
