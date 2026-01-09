@@ -6,6 +6,9 @@ package-lock.json
 dist/
 .wrangler/
 
+# Generated files
+extracted_sections/
+
 # Environment files
 .dev.vars
 .env

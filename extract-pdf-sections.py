@@ -76,11 +76,6 @@ def split_into_sections(text, filename):
     if current_section > 0 and section_content:
         sections[current_section] = '\n'.join(section_content).strip()
     
-    # Limit each section to reasonable length (first 1000 characters)
-    for i in range(1, 9):
-        if sections[i] and len(sections[i]) > 1000:
-            sections[i] = sections[i][:1000] + '...'
-    
     return sections
 
 def get_short_name(filename):
@@ -115,11 +110,45 @@ def get_short_name(filename):
     
     return name
 
+def get_safe_filename(name):
+    """Converts a name to a safe filename"""
+    # Remove or replace unsafe characters
+    safe_name = name.replace('/', '_').replace('\\', '_').replace(':', '_')
+    safe_name = safe_name.replace('*', '_').replace('?', '_').replace('"', '_')
+    safe_name = safe_name.replace('<', '_').replace('>', '_').replace('|', '_')
+    return safe_name
+
+def save_sections_as_text_files(sections, person_name, output_dir):
+    """Saves each section as a separate text file organized by section"""
+    safe_name = get_safe_filename(person_name)
+    
+    for section_id in range(1, 9):
+        section_content = sections[section_id]
+        
+        # Create section directory
+        section_dir = output_dir / f"section_{section_id}"
+        section_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create filename: {person_name}_section_{section_id}.txt
+        filename = f"{safe_name}_section_{section_id}.txt"
+        filepath = section_dir / filename
+        
+        # Write section content (even if empty)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            if section_content:
+                f.write(section_content)
+            else:
+                f.write("(このセクションの内容は抽出されませんでした)\n")
+
 def main():
     """Main function to process all PDFs"""
     script_dir = Path(__file__).parent
     examples_dir = script_dir / 'examples'
     output_path = script_dir / 'extracted-sections.json'
+    text_output_dir = script_dir / 'extracted_sections'
+    
+    # Create output directory for text files
+    text_output_dir.mkdir(exist_ok=True)
     
     all_projects = []
     
@@ -148,18 +177,32 @@ def main():
             
             sections = split_into_sections(text, filename)
             
+            # Get person name for file organization
+            person_name = get_short_name(filename)
+            
+            # Save sections as individual text files
+            save_sections_as_text_files(sections, person_name, text_output_dir)
+            
             # Count how many sections have content
             filled_sections = sum(1 for s in sections.values() if s and len(s) > 10)
-            print(f"    ✓ Extracted {filled_sections} sections")
+            print(f"    ✓ Extracted {filled_sections} sections to text files")
+            
+            # For JSON output, limit section length
+            sections_for_json = {}
+            for i in range(1, 9):
+                if sections[i] and len(sections[i]) > 1000:
+                    sections_for_json[i] = sections[i][:1000] + '...'
+                else:
+                    sections_for_json[i] = sections[i]
             
             all_projects.append({
-                'name': get_short_name(filename),
+                'name': person_name,
                 'filename': filename,
                 'category': subdir,
-                'sections': sections
+                'sections': sections_for_json
             })
     
-    # Save to JSON file
+    # Save to JSON file (for backward compatibility)
     output = {
         'generated': datetime.now().isoformat(),
         'sectionTitles': [{'id': p['id'], 'title': p['title']} for p in SECTION_PATTERNS],
@@ -170,7 +213,9 @@ def main():
         json.dump(output, f, ensure_ascii=False, indent=2)
     
     print(f"\n✓ Extracted data saved to {output_path}")
+    print(f"✓ Text files saved to {text_output_dir}/")
     print(f"  Total projects: {len(all_projects)}")
+    print(f"  Text files organized by section (section_1/ to section_8/)")
 
 if __name__ == '__main__':
     main()
