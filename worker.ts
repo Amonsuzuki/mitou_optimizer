@@ -1077,7 +1077,7 @@ function getHTMLPage(submissionDeadline: string): string {
             
             <div class="info-box">
                 <p><strong>使い方：</strong></p>
-                <p>各セクションに内容を記入して「Download LaTeX」または「Download PDF」ボタンをクリックすると、ファイルがダウンロードされます。</p>
+                <p>各セクションに内容を記入して「ダウンロード」ボタンをクリックし、LaTeXまたはPDF形式を選択すると、ファイルがダウンロードされます。</p>
                 <p>入力内容は自動的に保存されますので、安心して編集を進めてください。</p>
             </div>
             
@@ -1328,7 +1328,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 editingTitle: "未踏IT人材発掘・育成事業",
                 editingSubtitle: "提案プロジェクト詳細資料 作成ツール",
                 howToUseLabel: "使い方：",
-                howToUseText: "各セクションに内容を記入して「Download LaTeX」または「Download PDF」ボタンをクリックすると、ファイルがダウンロードされます。",
+                howToUseText: "各セクションに内容を記入して「ダウンロード」ボタンをクリックし、LaTeXまたはPDF形式を選択すると、ファイルがダウンロードされます。",
                 autoSaveText: "入力内容は自動的に保存されますので、安心して編集を進めてください。",
                 
                 projectName: "プロジェクト名",
@@ -1472,7 +1472,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 editingTitle: "MITOU IT Personnel Discovery and Development Project",
                 editingSubtitle: "Proposal Project Detailed Document Creation Tool",
                 howToUseLabel: "How to use:",
-                howToUseText: "Fill in each section and click \\"Download LaTeX\\" or \\"Download PDF\\" button to download the file.",
+                howToUseText: "Fill in each section and click the \\"Download\\" button, then select LaTeX or PDF format to download the file.",
                 autoSaveText: "Your input is automatically saved, so you can edit with confidence.",
                 
                 projectName: "Project Name",
