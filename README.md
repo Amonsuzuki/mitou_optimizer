@@ -12,6 +12,8 @@ This tool provides a user-friendly web interface for creating MITOU (未踏IT人
 - 🚀 **Hosted on Cloudflare Workers** for fast, global access
 - 📄 **LaTeX generation** with proper escaping and formatting
 - 💾 **Auto-save** functionality using localStorage
+- 👤 **Account registration and login** for cloud storage of application data
+- ☁️ **Cloud storage** using Cloudflare KV for saving and loading your application data
 - 📱 **Responsive design** that works on desktop and mobile
 - 🎨 **Clean, modern UI** for better user experience
 
@@ -80,12 +82,63 @@ This will update the `extracted-sections.json` file with content from all PDFs.
 npx wrangler login
 ```
 
-2. Deploy the worker:
+2. Create KV namespaces for account and memory storage:
+```bash
+# Create ACCOUNTS namespace
+npx wrangler kv:namespace create "ACCOUNTS"
+
+# Create MEMORIES namespace  
+npx wrangler kv:namespace create "MEMORIES"
+```
+
+3. Update `wrangler.jsonc` with the actual KV namespace IDs from the previous step:
+```jsonc
+{
+  "kv_namespaces": [
+    {
+      "binding": "ACCOUNTS",
+      "id": "your-accounts-namespace-id-here"
+    },
+    {
+      "binding": "MEMORIES",
+      "id": "your-memories-namespace-id-here"
+    }
+  ]
+}
+```
+
+4. Deploy the worker:
 ```bash
 npm run deploy
 ```
 
 ## Usage
+
+### Account Registration and Cloud Storage
+
+1. **Register an account:**
+   - Click the "Login" button in the top action bar
+   - Switch to the "Register" tab
+   - Enter your email and password (minimum 8 characters)
+   - Click "Register"
+
+2. **Login:**
+   - Click the "Login" button
+   - Enter your registered email and password
+   - Click "Login"
+
+3. **Save to cloud:**
+   - After logging in, fill in your application form
+   - Click the "Save" button to save your data to Cloudflare KV storage
+   - Your data is securely stored and associated with your account
+
+4. **Load from cloud:**
+   - After logging in, click the "Load" button
+   - Your previously saved application data will be loaded into the form
+   - You can continue editing where you left off
+
+5. **Logout:**
+   - Click the "Logout" button next to your email address
 
 ### Creating Your Application
 
