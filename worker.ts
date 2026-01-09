@@ -551,9 +551,9 @@ function getHTMLPage(): string {
                 <h3>未踏事業とは</h3>
                 <p>未踏IT人材発掘・育成事業は、独立行政法人情報処理推進機構（IPA）が実施する、優れたIT人材を発掘・育成するためのプログラムです。</p>
                 <ul>
-                    <li><strong>対象：</strong>25歳未満の個人または5名以下のグループ</li>
-                    <li><strong>支援額：</strong>最大300万円/人</li>
-                    <li><strong>期間：</strong>約6ヶ月</li>
+                    <li><strong>対象：</strong>25歳未満の個人またはグループ</li>
+                    <li><strong>支援額：</strong>最大300万円</li>
+                    <li><strong>期間：</strong>約9ヶ月</li>
                     <li><strong>特典：</strong>プロジェクトマネージャー（PM）による指導、開発環境の提供</li>
                 </ul>
             </div>
