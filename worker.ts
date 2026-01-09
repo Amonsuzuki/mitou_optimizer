@@ -7,6 +7,8 @@
 
 // Import extracted sections data
 import extractedSectionsData from './extracted-sections.json';
+// Import deadline configuration
+import deadlineConfig from './deadline-config.json';
 
 interface SectionData {
   projectName: string;  // プロジェクト名
@@ -158,7 +160,7 @@ ${escapeLatex(data.section8)}
 /**
  * Generates the HTML form page
  */
-function getHTMLPage(): string {
+function getHTMLPage(submissionDeadline: string): string {
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1208,7 +1210,7 @@ function getHTMLPage(): string {
         // Function to calculate and update days left until deadline
         function updateDaysLeft() {
             const t = translations[currentLang];
-            const deadlineDate = new Date('2026-03-13T23:59:59+09:00'); // March 13, 2026, Japan Time
+            const deadlineDate = new Date('${submissionDeadline}'); // Deadline from configuration
             const today = new Date();
             
             const diffTime = deadlineDate - today;
@@ -1688,7 +1690,7 @@ export default {
     }
     
     // Serve the HTML form for all other requests
-    return new Response(getHTMLPage(), {
+    return new Response(getHTMLPage(deadlineConfig.submissionDeadline), {
       headers: {
         'Content-Type': 'text/html; charset=utf-8'
       }

@@ -1,0 +1,92 @@
+name: Update Submission Deadline
+
+on:
+  # Run on a schedule (check monthly, on the 1st day of each month)
+  schedule:
+    - cron: '0 0 1 * *'
+  
+  # Allow manual trigger with custom deadline
+  workflow_dispatch:
+    inputs:
+      deadline:
+        description: 'New submission deadline (ISO 8601 format with timezone, e.g., 2026-03-13T23:59:59+09:00)'
+        required: true
+        type: string
+
+jobs:
+  update-deadline:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Update deadline configuration
+        run: |
+          # Get the new deadline from input or keep current for scheduled runs
+          if [ -n "${{ github.event.inputs.deadline }}" ]; then
+            NEW_DEADLINE="${{ github.event.inputs.deadline }}"
+            echo "Using manual deadline: $NEW_DEADLINE"
+          else
+            # For scheduled runs, read current deadline and optionally check if update is needed
+            CURRENT_DEADLINE=$(node -p "require('./deadline-config.json').submissionDeadline")
+            echo "Current deadline: $CURRENT_DEADLINE"
+            
+            # Check if deadline has passed
+            CURRENT_TIMESTAMP=$(date -d "$CURRENT_DEADLINE" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S%z" "$CURRENT_DEADLINE" +%s)
+            NOW_TIMESTAMP=$(date +%s)
+            
+            if [ $CURRENT_TIMESTAMP -lt $NOW_TIMESTAMP ]; then
+              echo "Deadline has passed. Please update manually using workflow_dispatch."
+              exit 0
+            else
+              echo "Deadline has not passed yet. No update needed."
+              exit 0
+            fi
+          fi
+          
+          # Update the configuration file
+          LAST_UPDATED=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+          cat > deadline-config.json << EOF
+          {
+            "submissionDeadline": "$NEW_DEADLINE",
+            "lastUpdated": "$LAST_UPDATED",
+            "note": "This file is automatically updated by GitHub Actions. The deadline represents the MITOU IT project submission deadline in Japan Time (JST)."
+          }
+          EOF
+          
+          echo "Updated deadline-config.json"
+          cat deadline-config.json
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # Check if there are changes
+          if git diff --quiet deadline-config.json; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          git add deadline-config.json
+          git commit -m "chore: update submission deadline to ${{ github.event.inputs.deadline }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create summary
+        run: |
+          echo "### Deadline Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deadline configuration updated successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**New deadline:** ${{ github.event.inputs.deadline }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Updated at:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY

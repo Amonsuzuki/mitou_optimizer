@@ -14,6 +14,7 @@ This tool provides a user-friendly web interface for creating MITOU (未踏IT人
 - 💾 **Auto-save** functionality using localStorage
 - 📱 **Responsive design** that works on desktop and mobile
 - 🎨 **Clean, modern UI** for better user experience
+- ⏰ **Automatic deadline countdown** with GitHub Actions integration
 
 ## Sections
 
@@ -32,13 +33,17 @@ The application includes the following 8 sections as required by MITOU:
 
 ```
 mitou_optimizer/
-├── worker.ts           # Main Cloudflare Worker (backend + frontend)
-├── wrangler.jsonc      # Cloudflare Workers configuration
-├── package.json        # Project dependencies
-├── tsconfig.json       # TypeScript configuration
-├── .gitignore          # Git ignore rules
-├── README.md           # This file
-└── *.pdf              # Example successful application documents
+├── worker.ts              # Main Cloudflare Worker (backend + frontend)
+├── wrangler.jsonc         # Cloudflare Workers configuration
+├── deadline-config.json   # Submission deadline configuration
+├── package.json           # Project dependencies
+├── tsconfig.json          # TypeScript configuration
+├── .gitignore             # Git ignore rules
+├── .github/
+│   └── workflows/
+│       └── update-deadline.yml  # GitHub Actions workflow for deadline updates
+├── README.md              # This file
+└── *.pdf                  # Example successful application documents
 ```
 
 ## Setup and Deployment
@@ -153,6 +158,42 @@ The application now extracts and organizes content from these PDFs by section, m
 - Clear button with confirmation
 - Loading states and error handling
 - Responsive design for all screen sizes
+
+### Automatic Deadline Updates
+- Submission deadline is stored in `deadline-config.json`
+- GitHub Actions workflow automatically manages deadline updates
+- Manual updates via workflow_dispatch with custom deadline input
+- Monthly scheduled checks to verify deadline status
+- Displays countdown of days remaining until submission deadline
+- Supports both Japanese and English language display
+
+## Updating the Submission Deadline
+
+The submission deadline can be updated either manually or automatically:
+
+### Manual Update via GitHub Actions
+
+1. Navigate to the "Actions" tab in the GitHub repository
+2. Select "Update Submission Deadline" workflow
+3. Click "Run workflow"
+4. Enter the new deadline in ISO 8601 format with timezone (e.g., `2026-03-13T23:59:59+09:00`)
+5. Click "Run workflow" to execute
+
+The workflow will automatically update `deadline-config.json` and commit the changes.
+
+### Manual File Edit
+
+Alternatively, you can directly edit `deadline-config.json`:
+
+```json
+{
+  "submissionDeadline": "2026-03-13T23:59:59+09:00",
+  "lastUpdated": "2026-01-09T15:19:10.652Z",
+  "note": "This file is automatically updated by GitHub Actions..."
+}
+```
+
+After editing, commit and push the changes. The application will automatically use the new deadline.
 
 ## License
 
