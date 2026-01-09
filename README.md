@@ -71,7 +71,12 @@ If you add new PDF files to the `examples/open` or `examples/closed` directories
 python3 extract-pdf-sections.py
 ```
 
-This will update the `extracted-sections.json` file with content from all PDFs.
+This will:
+- Update the `extracted-sections.json` file with content from all PDFs
+- Create individual text files for each section of each person in `extracted_sections/` directory
+- Organize files by the 8 standard MITOU application sections
+
+**For detailed information about text extraction, see [EXTRACTION_GUIDE.md](EXTRACTION_GUIDE.md)**
 
 ### Deployment to Cloudflare Workers
 
