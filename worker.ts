@@ -1767,6 +1767,18 @@ function getHTMLPage(submissionDeadline: string): string {
         // Initialize language on page load
         document.addEventListener('DOMContentLoaded', function() {
             switchLanguage(currentLang);
+            
+            // Setup click outside listener for download menu (optimized with cached elements)
+            const downloadContainer = document.querySelector('.download-container');
+            const downloadMenu = document.getElementById('downloadMenu');
+            
+            if (downloadContainer && downloadMenu) {
+                document.addEventListener('click', function(event) {
+                    if (!downloadContainer.contains(event.target)) {
+                        downloadMenu.classList.remove('active');
+                    }
+                });
+            }
         });
         
         // Constants (will be overridden by translation system)
@@ -2150,15 +2162,6 @@ function getHTMLPage(submissionDeadline: string): string {
             const menu = document.getElementById('downloadMenu');
             menu.classList.remove('active');
         }
-        
-        // Close download menu when clicking outside
-        document.addEventListener('click', function(event) {
-            const downloadContainer = document.querySelector('.download-container');
-            const menu = document.getElementById('downloadMenu');
-            if (menu && downloadContainer && !downloadContainer.contains(event.target)) {
-                menu.classList.remove('active');
-            }
-        });
         
         // Download LaTeX
         async function downloadLatex() {
