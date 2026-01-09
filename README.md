@@ -162,12 +162,25 @@ The application now extracts and organizes content from these PDFs by section, m
 ## Technologies Used
 
 - **Cloudflare Workers**: Serverless platform for hosting
+- **Cloudflare KV**: Key-value storage for user data and drafts
 - **TypeScript**: Type-safe development
+- **Google OAuth 2.0**: Secure user authentication
 - **LaTeX**: Document generation format
 - **HTML/CSS/JavaScript**: Frontend interface
 - **Python/PyPDF2**: PDF text extraction for example documents
 
-## Features Detail
+## Architecture & Implementation
+
+### Authentication & Cloud Storage
+The application implements Google OAuth authentication and cloud-based draft storage. For detailed information about the authentication system, API endpoints, and security considerations, see [AUTHENTICATION.md](AUTHENTICATION.md).
+
+Key features:
+- Secure Google OAuth 2.0 authentication
+- Session management with automatic expiration
+- Cloud-based draft storage using Cloudflare KV
+- Cross-device synchronization
+
+### Features Detail
 
 ### Section-Based Example Viewing (New!)
 - Automatically extracts text from example PDF documents
