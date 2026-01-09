@@ -63,6 +63,16 @@ npm run dev
 
 3. Open your browser and navigate to `http://localhost:8787`
 
+### Regenerating Example Sections Data
+
+If you add new PDF files to the `examples/open` or `examples/closed` directories, you can regenerate the extracted sections data:
+
+```bash
+python3 extract-pdf-sections.py
+```
+
+This will update the `extracted-sections.json` file with content from all PDFs.
+
 ### Deployment to Cloudflare Workers
 
 1. Login to Cloudflare:
@@ -77,12 +87,22 @@ npm run deploy
 
 ## Usage
 
+### Creating Your Application
+
 1. Access the web application
-2. Fill in all 8 sections with your project details
-3. Optionally add your name
-4. Click "LaTeX生成・ダウンロード" to generate and download the LaTeX file
-5. Compile the LaTeX file using your preferred LaTeX compiler (e.g., platex, xelatex)
-6. The generated PDF is ready for submission
+2. Navigate to the "編集" (Editing) tab
+3. Fill in all 8 sections with your project details
+4. Optionally add your name
+5. Click "LaTeX生成・ダウンロード" to generate and download the LaTeX file
+6. Compile the LaTeX file using your preferred LaTeX compiler (e.g., platex, xelatex)
+7. The generated PDF is ready for submission
+
+### Viewing Example Applications
+
+1. Navigate to the "過去採択者の申請書" (Successful Applicants' Examples) tab
+2. Click on any of the 8 section buttons to view content from multiple successful applications
+3. Compare how different applicants approached each section
+4. Use the examples as inspiration for your own application (but write in your own words!)
 
 ### Compiling LaTeX to PDF
 
@@ -100,9 +120,11 @@ You can also use online services like [Overleaf](https://www.overleaf.com/) for 
 
 ## Reference Documents
 
-The repository includes two successful application documents as references:
-- `wada_未踏一次審査資料.pdf`
-- `水野竣介_提案プロジェクト詳細資料.pdf`
+The repository includes successful application documents from 10 projects as references:
+- **Closed directory**: 2 example PDFs (和田さん, 水野さん)
+- **Open directory**: 8 example PDFs from various successful applicants
+
+The application now extracts and organizes content from these PDFs by section, making it easy to compare approaches across different successful applications.
 
 ## Technologies Used
 
@@ -110,8 +132,15 @@ The repository includes two successful application documents as references:
 - **TypeScript**: Type-safe development
 - **LaTeX**: Document generation format
 - **HTML/CSS/JavaScript**: Frontend interface
+- **Python/PyPDF2**: PDF text extraction for example documents
 
 ## Features Detail
+
+### Section-Based Example Viewing (New!)
+- Automatically extracts text from example PDF documents
+- Organizes content by the 8 standard MITOU sections
+- Allows side-by-side comparison of multiple successful applications
+- Helps applicants understand what to write in each section
 
 ### LaTeX Generation
 - Proper escaping of special LaTeX characters
