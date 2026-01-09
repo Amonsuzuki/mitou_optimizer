@@ -81,7 +81,7 @@ npm run deploy
 2. Fill in all 8 sections with your project details
 3. Optionally add your name
 4. Click "LaTeX生成・ダウンロード" to generate and download the LaTeX file
-5. Compile the LaTeX file using your preferred LaTeX compiler (e.g., pdflatex, xelatex)
+5. Compile the LaTeX file using your preferred LaTeX compiler (e.g., platex, xelatex)
 6. The generated PDF is ready for submission
 
 ### Compiling LaTeX to PDF
@@ -89,12 +89,14 @@ npm run deploy
 After downloading the `.tex` file, compile it using:
 
 ```bash
-# Using pdflatex (requires jarticle support)
+# Using platex (requires jarticle support)
 platex mitou_application.tex
 dvipdfmx mitou_application.dvi
-
-# Or use online services like Overleaf
 ```
+
+**For detailed compilation instructions and troubleshooting, see [LATEX_GUIDE.md](LATEX_GUIDE.md)**
+
+You can also use online services like [Overleaf](https://www.overleaf.com/) for easier compilation.
 
 ## Reference Documents
 
