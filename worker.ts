@@ -5,6 +5,9 @@
  * MITOU IT project application documents in LaTeX/PDF format.
  */
 
+// Import extracted sections data
+import extractedSectionsData from './extracted-sections.json';
+
 interface SectionData {
   projectName: string;  // プロジェクト名
   applicantName: string;  // 申請者名
@@ -491,6 +494,78 @@ function getHTMLPage(): string {
             text-decoration: underline;
         }
         
+        .section-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 30px 0;
+        }
+        
+        .section-btn {
+            padding: 15px 20px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: white;
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+        
+        .section-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .section-btn.active {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .section-content {
+            margin: 30px 0;
+        }
+        
+        .section-placeholder {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        
+        .project-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .project-section h3 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .project-section .section-text {
+            color: #333;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        
+        .project-section .no-content {
+            color: #999;
+            font-style: italic;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -741,28 +816,39 @@ function getHTMLPage(): string {
             <p class="subtitle">Successful Applicants' Examples</p>
             
             <div class="info-box">
-                <p>以下は実際に未踏事業に採択された申請書の例です。参考にして、あなた自身の申請書を作成してください。</p>
+                <p>以下は実際に未踏事業に採択された申請書の例です。セクションごとに複数のプロジェクトの内容を比較できます。</p>
+                <p>Below are examples of application documents that were actually accepted for the MITOU project. You can compare the content of multiple projects by section.</p>
+            </div>
+            
+            <div class="section-buttons">
+                <button class="section-btn" onclick="showSection(1, event)">1. 何をつくるか</button>
+                <button class="section-btn" onclick="showSection(2, event)">2. 斬新さの主張</button>
+                <button class="section-btn" onclick="showSection(3, event)">3. 出し方</button>
+                <button class="section-btn" onclick="showSection(4, event)">4. 進め方と予算</button>
+                <button class="section-btn" onclick="showSection(5, event)">5. 腕前の証明</button>
+                <button class="section-btn" onclick="showSection(6, event)">6. 特記事項</button>
+                <button class="section-btn" onclick="showSection(7, event)">7. 趣味など</button>
+                <button class="section-btn" onclick="showSection(8, event)">8. 将来への思い</button>
+            </div>
+            
+            <div id="sectionContent" class="section-content">
+                <p class="section-placeholder">上のボタンをクリックして、各セクションの内容を表示してください。<br>Click a button above to view the content of each section.</p>
             </div>
             
             <div class="example-card">
-                <h3>例1：和田 卓人さん</h3>
-                <p>未踏一次審査資料の例です。</p>
-                <p><a href="/wada_未踏一次審査資料.pdf" target="_blank">📄 PDFを開く</a></p>
-            </div>
-            
-            <div class="example-card">
-                <h3>例2：水野 竣介さん</h3>
-                <p>提案プロジェクト詳細資料の例です。</p>
-                <p><a href="/水野竣介_提案プロジェクト詳細資料.pdf" target="_blank">📄 PDFを開く</a></p>
+                <h3>PDFファイル / PDF Files</h3>
+                <p>完全な申請書のPDFファイルはこちらからアクセスできます。<br>Complete application PDF files can be accessed here:</p>
+                <p><a href="/wada_未踏一次審査資料.pdf" target="_blank">📄 和田さん (Wada-san)</a></p>
+                <p><a href="/水野竣介_提案プロジェクト詳細資料.pdf" target="_blank">📄 水野さん (Mizuno-san)</a></p>
             </div>
             
             <div class="info-box">
-                <p><strong>参考にする際のポイント：</strong></p>
+                <p><strong>参考にする際のポイント / Key Points:</strong></p>
                 <ul>
-                    <li>各セクションの書き方や分量を参考にする</li>
-                    <li>技術的な詳細度を確認する</li>
-                    <li>スケジュールや予算の記載方法を学ぶ</li>
-                    <li>ただし、丸写しは避け、自分の言葉で書くこと</li>
+                    <li>各セクションの書き方や分量を参考にする / Reference the writing style and content length</li>
+                    <li>技術的な詳細度を確認する / Check the level of technical detail</li>
+                    <li>スケジュールや予算の記載方法を学ぶ / Learn how to describe schedules and budgets</li>
+                    <li>ただし、丸写しは避け、自分の言葉で書くこと / However, write in your own words</li>
                 </ul>
             </div>
         </div>
@@ -1265,6 +1351,75 @@ function getHTMLPage(): string {
             }
         }
         
+        // Section viewing functionality
+        let sectionsData = null;
+        let currentSection = null;
+        
+        // Load sections data
+        async function loadSectionsData() {
+            if (sectionsData) return sectionsData;
+            
+            try {
+                const response = await fetch('/api/sections');
+                sectionsData = await response.json();
+                return sectionsData;
+            } catch (error) {
+                console.error('Failed to load sections data:', error);
+                return null;
+            }
+        }
+        
+        // Show section content
+        async function showSection(sectionNum, event) {
+            currentSection = sectionNum;
+            const data = await loadSectionsData();
+            
+            if (!data) {
+                alert('セクションデータの読み込みに失敗しました。');
+                return;
+            }
+            
+            // Update button states
+            document.querySelectorAll('.section-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            // Get section title
+            const sectionTitle = data.sectionTitles.find(s => s.id === sectionNum);
+            
+            // Build content HTML
+            let contentHTML = '<h2>' + sectionTitle.title + '</h2>';
+            
+            // Add all projects' content for this section
+            data.projects.forEach(project => {
+                const sectionText = project.sections[sectionNum];
+                
+                if (sectionText && sectionText.trim().length > 0) {
+                    contentHTML += '<div class="project-section">';
+                    contentHTML += '<h3>' + project.name + ' (' + project.category + ')</h3>';
+                    contentHTML += '<div class="section-text">' + escapeHtml(sectionText) + '</div>';
+                    contentHTML += '</div>';
+                } else {
+                    contentHTML += '<div class="project-section">';
+                    contentHTML += '<h3>' + project.name + ' (' + project.category + ')</h3>';
+                    contentHTML += '<div class="section-text no-content">このセクションの内容が抽出できませんでした。<br>Content not available for this section.</div>';
+                    contentHTML += '</div>';
+                }
+            });
+            
+            document.getElementById('sectionContent').innerHTML = contentHTML;
+        }
+        
+        // HTML escape function
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
         // Download LaTeX
         async function downloadLatex() {
             const form = document.getElementById('applicationForm');
@@ -1367,6 +1522,16 @@ function getHTMLPage(): string {
 export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    
+    // Handle request for extracted sections data
+    if (url.pathname === '/api/sections') {
+      return new Response(JSON.stringify(extractedSectionsData), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
     
     // Handle POST request to generate LaTeX
     if (url.pathname === '/generate' && request.method === 'POST') {
