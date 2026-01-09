@@ -8,13 +8,16 @@
 // Import extracted sections data
 import extractedSectionsData from './extracted-sections.json';
 // Import deadline configuration
-import deadlineConfig from './deadline-config.json';
+import deadlineConfigRaw from './deadline-config.json';
 
 interface DeadlineConfig {
   submissionDeadline: string;
   lastUpdated: string;
   note: string;
 }
+
+// Type-safe deadline configuration
+const deadlineConfig = deadlineConfigRaw as DeadlineConfig;
 
 interface SectionData {
   projectName: string;  // プロジェクト名
@@ -63,9 +66,17 @@ function sanitizeDeadline(deadline: string): string {
     return '2026-12-31T23:59:59+09:00';
   }
   
-  // Return the validated ISO string, escaping for use in JavaScript context
-  // This prevents injection attacks by ensuring only valid date strings are used
-  return date.toISOString();
+  // Validate that the string contains only safe characters for JavaScript string context
+  // Allow: digits, hyphens, colons, T, Z, plus/minus (for timezone), and dots (for milliseconds)
+  const safePattern = /^[0-9\-T:+Z.]+$/;
+  if (!safePattern.test(deadline)) {
+    // If contains potentially dangerous characters, convert to ISO string
+    return date.toISOString();
+  }
+  
+  // Return the original validated string to preserve timezone information
+  // This is safe because we've validated it's a valid date and contains only safe characters
+  return deadline;
 }
 
 /**
