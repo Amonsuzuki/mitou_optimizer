@@ -1774,7 +1774,8 @@ function getHTMLPage(submissionDeadline: string): string {
             
             if (downloadContainer && downloadMenu) {
                 document.addEventListener('click', function(event) {
-                    if (!downloadContainer.contains(event.target)) {
+                    const target = event.target as Node;
+                    if (target && !downloadContainer.contains(target)) {
                         downloadMenu.classList.remove('active');
                     }
                 });
