@@ -15,6 +15,7 @@ interface Env {
 interface User {
   username: string;
   passwordHash: string;
+  passwordSalt: string;  // Salt for PBKDF2
   email: string;
   createdAt: string;
 }
@@ -34,6 +35,23 @@ interface Session {
   username: string;
   createdAt: string;
   expiresAt: string;
+}
+
+// Request body interfaces
+interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+interface MemorySaveRequest extends SectionData {
+  memoryId?: string;
+  createdAt?: string;
 }
 
 interface SectionData {
@@ -1688,17 +1706,58 @@ function getHTMLPage(): string {
 }
 
 /**
- * Hash a password using SHA-256
- * Note: For production, consider using a more secure method like bcrypt
- * However, Cloudflare Workers has limited crypto APIs
+ * Generate a random salt for password hashing
  */
-async function hashPassword(password: string): Promise<string> {
+function generateSalt(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Hash a password using PBKDF2 with salt
+ * More secure than plain SHA-256 as it includes salt and iterations
+ */
+async function hashPassword(password: string, salt?: string): Promise<{ hash: string; salt: string }> {
+  // Generate salt if not provided
+  const passwordSalt = salt || generateSalt();
+  
   const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  
+  // Import password as key material
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+  
+  // Derive bits using PBKDF2
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: encoder.encode(passwordSalt),
+      iterations: 100000, // High iteration count for security
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    256 // 256 bits = 32 bytes
+  );
+  
+  // Convert to hex string
+  const hashArray = Array.from(new Uint8Array(derivedBits));
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex;
+  
+  return { hash: hashHex, salt: passwordSalt };
+}
+
+/**
+ * Verify a password against a stored hash and salt
+ */
+async function verifyPassword(password: string, storedHash: string, salt: string): Promise<boolean> {
+  const { hash } = await hashPassword(password, salt);
+  return hash === storedHash;
 }
 
 /**
@@ -1763,7 +1822,8 @@ export default {
     // API: Register new account
     if (url.pathname === '/api/register' && request.method === 'POST') {
       try {
-        const { username, password, email } = await request.json() as any;
+        const body = await request.json() as RegisterRequest;
+        const { username, password, email } = body;
         
         // Validate input
         if (!username || !password || !email) {
@@ -1782,11 +1842,12 @@ export default {
           });
         }
         
-        // Create new user
-        const passwordHash = await hashPassword(password);
+        // Create new user with secure password hashing
+        const { hash, salt } = await hashPassword(password);
         const user: User = {
           username,
-          passwordHash,
+          passwordHash: hash,
+          passwordSalt: salt,
           email,
           createdAt: new Date().toISOString()
         };
@@ -1812,7 +1873,8 @@ export default {
     // API: Login
     if (url.pathname === '/api/login' && request.method === 'POST') {
       try {
-        const { username, password } = await request.json() as any;
+        const body = await request.json() as LoginRequest;
+        const { username, password } = body;
         
         if (!username || !password) {
           return new Response(JSON.stringify({ error: 'Username and password are required' }), {
@@ -1831,9 +1893,11 @@ export default {
         }
         
         const user: User = JSON.parse(userData);
-        const passwordHash = await hashPassword(password);
         
-        if (passwordHash !== user.passwordHash) {
+        // Verify password using PBKDF2
+        const isValid = await verifyPassword(password, user.passwordHash, user.passwordSalt);
+        
+        if (!isValid) {
           return new Response(JSON.stringify({ error: 'Invalid username or password' }), {
             status: 401,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -1881,40 +1945,40 @@ export default {
           });
         }
         
-        const data = await request.json() as any;
+        const body = await request.json() as MemorySaveRequest;
         const sectionData: SectionData = {
-          projectName: data.projectName || '',
-          applicantName: data.applicantName || '',
-          section1_1: data.section1_1 || '',
-          section1_2_1: data.section1_2_1 || '',
-          section1_2_2: data.section1_2_2 || '',
-          section1_2_3: data.section1_2_3 || '',
-          section1_3: data.section1_3 || '',
-          section1_4: data.section1_4 || '',
-          section2_1: data.section2_1 || '',
-          section2_2: data.section2_2 || '',
-          section3: data.section3 || '',
-          section4_1_1: data.section4_1_1 || '',
-          section4_1_2: data.section4_1_2 || '',
-          section4_1_3: data.section4_1_3 || '',
-          section4_2: data.section4_2 || '',
-          section4_3: data.section4_3 || '',
-          section4_4_1: data.section4_4_1 || '',
-          section4_4_2: data.section4_4_2 || '',
-          section5: data.section5 || '',
-          section6: data.section6 || '',
-          section7: data.section7 || '',
-          section8: data.section8 || ''
+          projectName: body.projectName || '',
+          applicantName: body.applicantName || '',
+          section1_1: body.section1_1 || '',
+          section1_2_1: body.section1_2_1 || '',
+          section1_2_2: body.section1_2_2 || '',
+          section1_2_3: body.section1_2_3 || '',
+          section1_3: body.section1_3 || '',
+          section1_4: body.section1_4 || '',
+          section2_1: body.section2_1 || '',
+          section2_2: body.section2_2 || '',
+          section3: body.section3 || '',
+          section4_1_1: body.section4_1_1 || '',
+          section4_1_2: body.section4_1_2 || '',
+          section4_1_3: body.section4_1_3 || '',
+          section4_2: body.section4_2 || '',
+          section4_3: body.section4_3 || '',
+          section4_4_1: body.section4_4_1 || '',
+          section4_4_2: body.section4_4_2 || '',
+          section5: body.section5 || '',
+          section6: body.section6 || '',
+          section7: body.section7 || '',
+          section8: body.section8 || ''
         };
         
-        const memoryId = data.memoryId || generateSessionToken();
+        const memoryId = body.memoryId || generateSessionToken();
         const now = new Date().toISOString();
         
         const memory: Memory = {
           userId: session.userId,
           memoryId,
           sectionData,
-          createdAt: data.createdAt || now,
+          createdAt: body.createdAt || now,
           updatedAt: now
         };
         
