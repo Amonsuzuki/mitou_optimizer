@@ -600,6 +600,101 @@ function getHTMLPage(): string {
             font-style: italic;
         }
         
+        .download-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .download-modal.active {
+            display: flex;
+        }
+        
+        .download-modal-content {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .download-modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .download-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .download-option-btn {
+            padding: 15px 20px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: white;
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .download-option-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .download-option-icon {
+            font-size: 24px;
+        }
+        
+        .download-option-text {
+            flex: 1;
+        }
+        
+        .download-option-desc {
+            font-size: 12px;
+            opacity: 0.8;
+            font-weight: normal;
+        }
+        
+        .download-modal-cancel {
+            width: 100%;
+            padding: 10px 20px;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            background: white;
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .download-modal-cancel:hover {
+            background: #f5f5f5;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -656,8 +751,7 @@ function getHTMLPage(): string {
             </button>
             <button class="action-btn disabled" id="saveBtn" title="Login required">Save</button>
             <button class="action-btn" id="previewBtn" onclick="previewDocument()">Preview</button>
-            <button class="action-btn primary" id="downloadLatexBtn" onclick="downloadLatex()">Download LaTeX</button>
-            <button class="action-btn primary" id="downloadPdfBtn" onclick="downloadPDF()">Download PDF</button>
+            <button class="action-btn primary" id="downloadBtn" onclick="showDownloadOptions()">Download</button>
             <div class="language-selector">
                 <button class="lang-btn" onclick="switchLanguage('ja')" id="langJa">日本語</button>
                 <button class="lang-btn" onclick="switchLanguage('en')" id="langEn">English</button>
@@ -911,6 +1005,30 @@ function getHTMLPage(): string {
         </div>
     </div>
     
+    <!-- Download Modal -->
+    <div class="download-modal" id="downloadModal">
+        <div class="download-modal-content">
+            <h3 class="download-modal-title" id="downloadModalTitle">Select File Type</h3>
+            <div class="download-options">
+                <button class="download-option-btn" onclick="downloadLatex(); hideDownloadModal();">
+                    <span class="download-option-icon">📄</span>
+                    <div class="download-option-text">
+                        <div id="downloadLatexLabel">LaTeX (.tex)</div>
+                        <div class="download-option-desc" id="downloadLatexDesc">For manual compilation</div>
+                    </div>
+                </button>
+                <button class="download-option-btn" onclick="downloadPDF(); hideDownloadModal();">
+                    <span class="download-option-icon">📕</span>
+                    <div class="download-option-text">
+                        <div id="downloadPdfLabel">PDF (.pdf)</div>
+                        <div class="download-option-desc" id="downloadPdfDesc">Requires LaTeX compiler</div>
+                    </div>
+                </button>
+            </div>
+            <button class="download-modal-cancel" onclick="hideDownloadModal()" id="downloadCancelBtn">Cancel</button>
+        </div>
+    </div>
+    
     <script>
         // Language translations
         const translations = {
@@ -931,9 +1049,18 @@ function getHTMLPage(): string {
                 aiOff: "OFF",
                 save: "保存",
                 preview: "プレビュー",
+                download: "ダウンロード",
                 downloadLatex: "LaTeXダウンロード",
                 downloadPDF: "PDFダウンロード",
                 loginRequired: "ログインが必要です",
+                
+                // Download modal
+                downloadModalTitle: "ファイル形式を選択",
+                downloadLatexLabel: "LaTeX (.tex)",
+                downloadLatexDesc: "手動でコンパイル用",
+                downloadPdfLabel: "PDF (.pdf)",
+                downloadPdfDesc: "LaTeXコンパイラが必要",
+                downloadCancelBtn: "キャンセル",
                 
                 // Knowledge tab
                 knowledgeTitle: "未踏IT人材発掘・育成事業について",
@@ -1074,9 +1201,18 @@ function getHTMLPage(): string {
                 aiOff: "OFF",
                 save: "Save",
                 preview: "Preview",
+                download: "Download",
                 downloadLatex: "Download LaTeX",
                 downloadPDF: "Download PDF",
                 loginRequired: "Login required",
+                
+                // Download modal
+                downloadModalTitle: "Select File Type",
+                downloadLatexLabel: "LaTeX (.tex)",
+                downloadLatexDesc: "For manual compilation",
+                downloadPdfLabel: "PDF (.pdf)",
+                downloadPdfDesc: "Requires LaTeX compiler",
+                downloadCancelBtn: "Cancel",
                 
                 // Knowledge tab
                 knowledgeTitle: "About MITOU IT Personnel Discovery and Development Project",
@@ -1261,8 +1397,15 @@ function getHTMLPage(): string {
             document.getElementById('saveBtn').textContent = t.save;
             document.getElementById('saveBtn').title = t.loginRequired;
             document.getElementById('previewBtn').textContent = t.preview;
-            document.getElementById('downloadLatexBtn').textContent = t.downloadLatex;
-            document.getElementById('downloadPdfBtn').textContent = t.downloadPDF;
+            document.getElementById('downloadBtn').textContent = t.download;
+            
+            // Download modal
+            document.getElementById('downloadModalTitle').textContent = t.downloadModalTitle;
+            document.getElementById('downloadLatexLabel').textContent = t.downloadLatexLabel;
+            document.getElementById('downloadLatexDesc').textContent = t.downloadLatexDesc;
+            document.getElementById('downloadPdfLabel').textContent = t.downloadPdfLabel;
+            document.getElementById('downloadPdfDesc').textContent = t.downloadPdfDesc;
+            document.getElementById('downloadCancelBtn').textContent = t.downloadCancelBtn;
             
             // Knowledge tab
             const knowledgeTab = document.getElementById('knowledge');
@@ -1520,6 +1663,28 @@ function getHTMLPage(): string {
             div.textContent = text;
             return div.innerHTML;
         }
+        
+        // Show download options modal
+        function showDownloadOptions() {
+            const modal = document.getElementById('downloadModal');
+            modal.classList.add('active');
+        }
+        
+        // Hide download modal
+        function hideDownloadModal() {
+            const modal = document.getElementById('downloadModal');
+            modal.classList.remove('active');
+        }
+        
+        // Close modal when clicking outside
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('downloadModal');
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    hideDownloadModal();
+                }
+            });
+        });
         
         // Download LaTeX
         async function downloadLatex() {
