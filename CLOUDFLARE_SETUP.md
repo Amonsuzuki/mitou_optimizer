@@ -85,9 +85,9 @@ Keys:
 
 ## Security Considerations
 
-1. **Password Hashing**: Passwords are hashed using SHA-256. For production, consider implementing a more secure hashing algorithm.
+1. **Password Hashing**: Passwords are hashed using PBKDF2 with SHA-256 and 100,000 iterations, along with a unique random salt for each user. This provides strong protection against rainbow table and brute-force attacks.
 
-2. **Session Management**: Sessions expire after 7 days. The expiration is managed both in the session object and using KV TTL.
+2. **Session Management**: Sessions expire after 7 days. The expiration is managed both in the session object and using KV TTL for automatic cleanup.
 
 3. **CORS**: The API endpoints have CORS enabled to allow access from the same origin.
 

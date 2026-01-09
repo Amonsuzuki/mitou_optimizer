@@ -89,6 +89,12 @@ interface SectionData {
   section8: string;  // 将来のソフトウェア技術に対して思うこと・期待すること
 }
 
+// Constants
+const SESSION_DURATION_DAYS = 7;
+const SESSION_DURATION_MS = SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000;
+const SESSION_DURATION_SECONDS = SESSION_DURATION_DAYS * 24 * 60 * 60;
+const PBKDF2_ITERATIONS = 100000;
+
 /**
  * Escapes special LaTeX characters in text
  * Security: Backslashes are escaped FIRST to prevent injection attacks
@@ -1738,7 +1744,7 @@ async function hashPassword(password: string, salt?: string): Promise<{ hash: st
     {
       name: 'PBKDF2',
       salt: encoder.encode(passwordSalt),
-      iterations: 100000, // High iteration count for security
+      iterations: PBKDF2_ITERATIONS,
       hash: 'SHA-256'
     },
     keyMaterial,
@@ -1910,11 +1916,11 @@ export default {
           userId: username,
           username: username,
           createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+          expiresAt: new Date(Date.now() + SESSION_DURATION_MS).toISOString()
         };
         
         await env.USERS_KV.put(`session:${sessionToken}`, JSON.stringify(session), {
-          expirationTtl: 7 * 24 * 60 * 60 // 7 days in seconds
+          expirationTtl: SESSION_DURATION_SECONDS
         });
         
         return new Response(JSON.stringify({ 
