@@ -30,6 +30,9 @@ SECTION_PATTERNS = [
     {'id': 8, 'pattern': r'(?:8\s*[\.．]?\s*将来のソフトウェア|^将来.*ソフトウェア.*技術)', 'title': '将来のソフトウェア技術に対して思うこと・期待すること'}
 ]
 
+# Maximum character limit for JSON output (to keep file size reasonable for web display)
+JSON_SECTION_CHAR_LIMIT = 1000
+
 def extract_text_from_pdf(pdf_path):
     """Extracts text from a PDF file"""
     try:
@@ -111,12 +114,13 @@ def get_short_name(filename):
     return name
 
 def get_safe_filename(name):
-    """Converts a name to a safe filename"""
-    # Remove or replace unsafe characters
-    safe_name = name.replace('/', '_').replace('\\', '_').replace(':', '_')
-    safe_name = safe_name.replace('*', '_').replace('?', '_').replace('"', '_')
-    safe_name = safe_name.replace('<', '_').replace('>', '_').replace('|', '_')
-    return safe_name
+    """Converts a name to a safe filename using character translation"""
+    # Define unsafe characters and their replacement
+    unsafe_chars = str.maketrans({
+        '/': '_', '\\': '_', ':': '_', '*': '_',
+        '?': '_', '"': '_', '<': '_', '>': '_', '|': '_'
+    })
+    return name.translate(unsafe_chars)
 
 def save_sections_as_text_files(sections, person_name, output_dir):
     """Saves each section as a separate text file organized by section"""
@@ -190,8 +194,8 @@ def main():
             # For JSON output, limit section length
             sections_for_json = {}
             for i in range(1, 9):
-                if sections[i] and len(sections[i]) > 1000:
-                    sections_for_json[i] = sections[i][:1000] + '...'
+                if sections[i] and len(sections[i]) > JSON_SECTION_CHAR_LIMIT:
+                    sections_for_json[i] = sections[i][:JSON_SECTION_CHAR_LIMIT] + '...'
                 else:
                     sections_for_json[i] = sections[i]
             
