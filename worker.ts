@@ -356,7 +356,7 @@ function getHTMLPage(submissionDeadline: string): string {
         
         .sidebar {
             position: fixed;
-            left: -300px;
+            left: -280px;
             top: 0;
             width: 280px;
             height: 100vh;
@@ -998,7 +998,7 @@ function getHTMLPage(submissionDeadline: string): string {
             }
             
             .sidebar {
-                width: 85%;
+                width: min(85%, 320px);
             }
             
             .sidebar-toggle {
@@ -1312,6 +1312,16 @@ function getHTMLPage(submissionDeadline: string): string {
             const overlay = document.querySelector('.sidebar-overlay');
             sidebar.classList.toggle('open');
             overlay.classList.toggle('show');
+        }
+        
+        // Close sidebar helper function
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            if (sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('show');
+            }
         }
         
         // Language translations
@@ -1871,12 +1881,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 document.getElementById(targetTab).classList.add('active');
                 
                 // Close sidebar after selecting a tab
-                const sidebar = document.getElementById('sidebar');
-                const overlay = document.querySelector('.sidebar-overlay');
-                if (sidebar.classList.contains('open')) {
-                    sidebar.classList.remove('open');
-                    overlay.classList.remove('show');
-                }
+                closeSidebar();
             });
         });
         
