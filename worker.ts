@@ -1317,7 +1317,6 @@ function getHTMLPage(): string {
         // Initialize language on page load
         document.addEventListener('DOMContentLoaded', function() {
             switchLanguage(currentLang);
-            updateDaysLeft(); // Initialize days left display
         });
         
         // Constants (will be overridden by translation system)
