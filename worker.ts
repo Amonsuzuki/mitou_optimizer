@@ -428,6 +428,51 @@ function getHTMLPage(submissionDeadline: string): string {
             cursor: not-allowed;
         }
         
+        .download-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .download-menu {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin-bottom: 5px;
+            z-index: 1000;
+            min-width: 180px;
+        }
+        
+        .download-menu.active {
+            display: block;
+        }
+        
+        .download-option {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .download-option:last-child {
+            border-bottom: none;
+        }
+        
+        .download-option:hover {
+            background: #f0f4ff;
+        }
+        
+        .download-option-icon {
+            margin-right: 8px;
+        }
+        
         .toggle-btn {
             padding: 10px 20px;
             border: 2px solid #ccc;
@@ -959,8 +1004,21 @@ function getHTMLPage(submissionDeadline: string): string {
             </button>
             <button class="action-btn disabled" id="saveBtn" onclick="saveDraft()" title="Login required">Save</button>
             <button class="action-btn" id="previewBtn" onclick="previewDocument()">Preview</button>
-            <button class="action-btn primary" id="downloadLatexBtn" onclick="downloadLatex()">Download LaTeX</button>
-            <button class="action-btn primary" id="downloadPdfBtn" onclick="downloadPDF()">Download PDF</button>
+            <div class="download-container">
+                <button class="action-btn primary" id="downloadBtn" onclick="toggleDownloadMenu()">
+                    <span id="downloadBtnText">Download</span> ▼
+                </button>
+                <div class="download-menu" id="downloadMenu">
+                    <div class="download-option" onclick="downloadLatex(); closeDownloadMenu();">
+                        <span class="download-option-icon">📄</span>
+                        <span id="downloadLatexText">LaTeX (.tex)</span>
+                    </div>
+                    <div class="download-option" onclick="downloadPDF(); closeDownloadMenu();">
+                        <span class="download-option-icon">📕</span>
+                        <span id="downloadPdfText">PDF</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -1230,8 +1288,9 @@ function getHTMLPage(submissionDeadline: string): string {
                 aiOff: "OFF",
                 save: "保存",
                 preview: "プレビュー",
-                downloadLatex: "LaTeXダウンロード",
-                downloadPDF: "PDFダウンロード",
+                download: "ダウンロード",
+                downloadLatex: "LaTeX (.tex)",
+                downloadPDF: "PDF",
                 loginRequired: "ログインが必要です",
                 
                 // Knowledge tab
@@ -1373,8 +1432,9 @@ function getHTMLPage(submissionDeadline: string): string {
                 aiOff: "OFF",
                 save: "Save",
                 preview: "Preview",
-                downloadLatex: "Download LaTeX",
-                downloadPDF: "Download PDF",
+                download: "Download",
+                downloadLatex: "LaTeX (.tex)",
+                downloadPDF: "PDF",
                 loginRequired: "Login required",
                 
                 // Knowledge tab
@@ -1560,8 +1620,9 @@ function getHTMLPage(submissionDeadline: string): string {
             document.getElementById('saveBtn').textContent = t.save;
             document.getElementById('saveBtn').title = t.loginRequired;
             document.getElementById('previewBtn').textContent = t.preview;
-            document.getElementById('downloadLatexBtn').textContent = t.downloadLatex;
-            document.getElementById('downloadPdfBtn').textContent = t.downloadPDF;
+            document.getElementById('downloadBtnText').textContent = t.download;
+            document.getElementById('downloadLatexText').textContent = t.downloadLatex;
+            document.getElementById('downloadPdfText').textContent = t.downloadPDF;
             
             // Knowledge tab
             const knowledgeTab = document.getElementById('knowledge');
@@ -2078,6 +2139,26 @@ function getHTMLPage(submissionDeadline: string): string {
             div.textContent = text;
             return div.innerHTML;
         }
+        
+        // Download menu toggle functions
+        function toggleDownloadMenu() {
+            const menu = document.getElementById('downloadMenu');
+            menu.classList.toggle('active');
+        }
+        
+        function closeDownloadMenu() {
+            const menu = document.getElementById('downloadMenu');
+            menu.classList.remove('active');
+        }
+        
+        // Close download menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const downloadContainer = document.querySelector('.download-container');
+            const menu = document.getElementById('downloadMenu');
+            if (menu && downloadContainer && !downloadContainer.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
         
         // Download LaTeX
         async function downloadLatex() {
