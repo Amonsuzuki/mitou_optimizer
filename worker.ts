@@ -774,7 +774,7 @@ function getHTMLPage(): string {
             ja: {
                 // Nav tabs
                 navKnowledge: "未踏採択のための一般知識",
-                navEditing: "編集",
+                navEditing: "編集ページ",
                 navExamples: "過去採択者の申請書",
                 
                 // Action bar
