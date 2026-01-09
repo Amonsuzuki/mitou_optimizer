@@ -18,17 +18,24 @@ interface SectionData {
 
 /**
  * Escapes special LaTeX characters in text
+ * Security: Backslashes are escaped FIRST to prevent injection attacks
  */
 function escapeLatex(text: string): string {
   if (!text) return '';
   
-  return text
-    .replace(/\\/g, '\\textbackslash{}')
-    .replace(/[&%$#_{}]/g, '\\$&')
-    .replace(/\^/g, '\\textasciicircum{}')
-    .replace(/~/g, '\\textasciitilde{}')
-    .replace(/\n\n+/g, '\n\n\\vspace{0.3em}\n\n')
-    .replace(/\n/g, '\n');
+  // SECURITY: Escape backslashes FIRST, before any other replacements
+  // This prevents any user input from creating new LaTeX commands
+  let result = text.replace(/\\/g, '\\textbackslash{}');
+  
+  // Escape other special LaTeX characters (safe because backslashes are already escaped)
+  result = result.replace(/[&%$#_{}]/g, '\\$&');
+  result = result.replace(/\^/g, '\\textasciicircum{}');
+  result = result.replace(/~/g, '\\textasciitilde{}');
+  
+  // Add vertical spacing between paragraphs (double newlines)
+  result = result.replace(/\n\n+/g, '\n\n\\vspace{0.3em}\n\n');
+  
+  return result;
 }
 
 /**
