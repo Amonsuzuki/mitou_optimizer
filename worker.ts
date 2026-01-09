@@ -353,6 +353,40 @@ function getHTMLPage(): string {
             font-size: 14px;
         }
         
+        .deadline-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        
+        .deadline-icon {
+            font-size: 48px;
+            line-height: 1;
+        }
+        
+        .deadline-content {
+            flex: 1;
+        }
+        
+        .deadline-label {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .deadline-days {
+            font-size: 36px;
+            font-weight: bold;
+            line-height: 1;
+        }
+        
         .info-box {
             background: #f8f9fa;
             border-left: 4px solid #667eea;
@@ -501,6 +535,21 @@ function getHTMLPage(): string {
                 font-size: 22px;
             }
             
+            .deadline-box {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+                padding: 15px;
+            }
+            
+            .deadline-icon {
+                font-size: 36px;
+            }
+            
+            .deadline-days {
+                font-size: 28px;
+            }
+            
             .action-bar {
                 flex-direction: column;
                 padding-top: 60px;
@@ -546,6 +595,14 @@ function getHTMLPage(): string {
         <div class="tab-content" id="knowledge">
             <h1>未踏IT人材発掘・育成事業について</h1>
             <p class="subtitle">General Knowledge to Pass MITOU</p>
+            
+            <div class="deadline-box">
+                <div class="deadline-icon">📅</div>
+                <div class="deadline-content">
+                    <div class="deadline-label">提出締切まで</div>
+                    <div class="deadline-days" id="daysLeft">-- 日</div>
+                </div>
+            </div>
             
             <div class="info-box">
                 <h3>未踏事業とは</h3>
@@ -777,6 +834,11 @@ function getHTMLPage(): string {
                 navEditing: "編集",
                 navExamples: "過去採択者の申請書",
                 
+                // Deadline
+                deadlineLabel: "提出締切まで",
+                daysLeftSuffix: "日",
+                deadlinePassed: "締切を過ぎました",
+                
                 // Action bar
                 aiReview: "AIレビュー",
                 aiOn: "ON",
@@ -915,6 +977,11 @@ function getHTMLPage(): string {
                 navEditing: "Editing page",
                 navExamples: "Successful applicants' examples",
                 
+                // Deadline
+                deadlineLabel: "Days until submission deadline",
+                daysLeftSuffix: " days",
+                deadlinePassed: "Deadline has passed",
+                
                 // Action bar
                 aiReview: "AI review",
                 aiOn: "ON",
@@ -1052,6 +1119,29 @@ function getHTMLPage(): string {
         // Current language
         let currentLang = localStorage.getItem('language') || 'ja';
         
+        // Function to calculate and update days left until deadline
+        function updateDaysLeft() {
+            const t = translations[currentLang];
+            const deadlineDate = new Date('2026-03-13T23:59:59+09:00'); // March 13, 2026, Japan Time
+            const today = new Date();
+            
+            const diffTime = deadlineDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const daysLeftElement = document.getElementById('daysLeft');
+            
+            if (diffDays > 0) {
+                if (currentLang === 'ja') {
+                    daysLeftElement.textContent = diffDays + t.daysLeftSuffix;
+                } else {
+                    daysLeftElement.textContent = diffDays + t.daysLeftSuffix;
+                }
+            } else {
+                daysLeftElement.textContent = t.deadlinePassed;
+                daysLeftElement.style.fontSize = '24px';
+            }
+        }
+        
         // Function to switch language
         function switchLanguage(lang) {
             currentLang = lang;
@@ -1073,6 +1163,12 @@ function getHTMLPage(): string {
             document.querySelectorAll('.nav-tab')[0].textContent = t.navKnowledge;
             document.querySelectorAll('.nav-tab')[1].textContent = t.navEditing;
             document.querySelectorAll('.nav-tab')[2].textContent = t.navExamples;
+            
+            // Update deadline label
+            document.querySelector('.deadline-label').textContent = t.deadlineLabel;
+            
+            // Update days left
+            updateDaysLeft();
             
             // Action bar
             document.getElementById('aiReviewLabel').textContent = t.aiReview;
@@ -1225,6 +1321,7 @@ function getHTMLPage(): string {
         // Initialize language on page load
         document.addEventListener('DOMContentLoaded', function() {
             switchLanguage(currentLang);
+            updateDaysLeft(); // Initialize days left display
         });
         
         // Constants (will be overridden by translation system)
