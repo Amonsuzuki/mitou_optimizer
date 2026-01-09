@@ -8,6 +8,59 @@
 // Import extracted sections data
 import extractedSectionsData from './extracted-sections.json';
 
+/**
+ * Environment bindings for Cloudflare Worker
+ */
+interface Env {
+  ACCOUNTS: KVNamespace;  // KV binding for storing account data
+  MEMORIES: KVNamespace;  // KV binding for storing user memories/data
+}
+
+/**
+ * User account information
+ */
+interface UserAccount {
+  email: string;
+  passwordHash: string;
+  createdAt: string;
+  lastLogin?: string;
+}
+
+/**
+ * User memory data (form data saved for each user)
+ */
+interface UserMemory {
+  userId: string;
+  formData: SectionData;
+  lastSaved: string;
+}
+
+/**
+ * Registration request payload
+ */
+interface RegisterRequest {
+  email: string;
+  password: string;
+}
+
+/**
+ * Login request payload
+ */
+interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+/**
+ * Authentication response
+ */
+interface AuthResponse {
+  success: boolean;
+  message: string;
+  token?: string;
+  email?: string;
+}
+
 interface SectionData {
   projectName: string;  // プロジェクト名
   applicantName: string;  // 申請者名
@@ -153,6 +206,169 @@ ${escapeLatex(data.section8)}
 \\end{document}`;
 
   return latex;
+}
+
+/**
+ * Hashes a password using SHA-256
+ */
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+/**
+ * Generates a simple JWT-like token for authentication
+ */
+async function generateToken(email: string): Promise<string> {
+  const payload = {
+    email,
+    timestamp: Date.now(),
+    random: Math.random().toString(36)
+  };
+  const encoder = new TextEncoder();
+  const data = encoder.encode(JSON.stringify(payload));
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return token;
+}
+
+/**
+ * Validates email format
+ */
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Registers a new user account
+ */
+async function registerUser(env: Env, email: string, password: string): Promise<AuthResponse> {
+  // Validate email format
+  if (!isValidEmail(email)) {
+    return {
+      success: false,
+      message: 'Invalid email format'
+    };
+  }
+
+  // Validate password strength
+  if (password.length < 8) {
+    return {
+      success: false,
+      message: 'Password must be at least 8 characters long'
+    };
+  }
+
+  // Check if user already exists
+  const existingUser = await env.ACCOUNTS.get(email);
+  if (existingUser) {
+    return {
+      success: false,
+      message: 'Email already registered'
+    };
+  }
+
+  // Hash password and create account
+  const passwordHash = await hashPassword(password);
+  const account: UserAccount = {
+    email,
+    passwordHash,
+    createdAt: new Date().toISOString()
+  };
+
+  // Store account in KV
+  await env.ACCOUNTS.put(email, JSON.stringify(account));
+
+  // Generate authentication token
+  const token = await generateToken(email);
+
+  return {
+    success: true,
+    message: 'Account created successfully',
+    token,
+    email
+  };
+}
+
+/**
+ * Authenticates a user login
+ */
+async function loginUser(env: Env, email: string, password: string): Promise<AuthResponse> {
+  // Get user account
+  const accountData = await env.ACCOUNTS.get(email);
+  if (!accountData) {
+    return {
+      success: false,
+      message: 'Invalid email or password'
+    };
+  }
+
+  const account: UserAccount = JSON.parse(accountData);
+
+  // Verify password
+  const passwordHash = await hashPassword(password);
+  if (passwordHash !== account.passwordHash) {
+    return {
+      success: false,
+      message: 'Invalid email or password'
+    };
+  }
+
+  // Update last login time
+  account.lastLogin = new Date().toISOString();
+  await env.ACCOUNTS.put(email, JSON.stringify(account));
+
+  // Generate authentication token
+  const token = await generateToken(email);
+
+  return {
+    success: true,
+    message: 'Login successful',
+    token,
+    email
+  };
+}
+
+/**
+ * Saves user memory/form data
+ */
+async function saveUserMemory(env: Env, email: string, formData: SectionData): Promise<boolean> {
+  const memory: UserMemory = {
+    userId: email,
+    formData,
+    lastSaved: new Date().toISOString()
+  };
+
+  try {
+    await env.MEMORIES.put(email, JSON.stringify(memory));
+    return true;
+  } catch (error) {
+    console.error('Failed to save user memory:', error);
+    return false;
+  }
+}
+
+/**
+ * Loads user memory/form data
+ */
+async function loadUserMemory(env: Env, email: string): Promise<SectionData | null> {
+  try {
+    const memoryData = await env.MEMORIES.get(email);
+    if (!memoryData) {
+      return null;
+    }
+    const memory: UserMemory = JSON.parse(memoryData);
+    return memory.formData;
+  } catch (error) {
+    console.error('Failed to load user memory:', error);
+    return null;
+  }
 }
 
 /**
@@ -641,9 +857,245 @@ function getHTMLPage(): string {
                 transform: none;
             }
         }
+        
+        /* Login/Register Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            overflow: auto;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            color: #667eea;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            line-height: 1;
+        }
+        
+        .modal-close:hover {
+            color: #333;
+        }
+        
+        .auth-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+        
+        .auth-tab:hover {
+            color: #667eea;
+        }
+        
+        .auth-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .auth-form {
+            display: none;
+        }
+        
+        .auth-form.active {
+            display: block;
+        }
+        
+        .form-field {
+            margin-bottom: 15px;
+        }
+        
+        .form-field label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-field input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .form-field input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .auth-submit {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .auth-submit:hover {
+            background: #5568d3;
+        }
+        
+        .auth-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .auth-message.active {
+            display: block;
+        }
+        
+        .auth-message.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #66bb6a;
+        }
+        
+        .auth-message.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef5350;
+        }
+        
+        .user-info {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+        
+        .user-info.active {
+            display: flex;
+        }
+        
+        .user-email {
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .logout-btn {
+            padding: 6px 12px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: #d32f2f;
+        }
     </style>
 </head>
 <body>
+    <!-- Login/Register Modal -->
+    <div class="modal" id="authModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Account</h2>
+                <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+                <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+            </div>
+            
+            <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-field">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-field">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="auth-submit">Login</button>
+            </form>
+            
+            <form class="auth-form" id="registerForm" onsubmit="handleRegister(event)">
+                <div class="form-field">
+                    <label>Email</label>
+                    <input type="email" id="registerEmail" required>
+                </div>
+                <div class="form-field">
+                    <label>Password (min 8 characters)</label>
+                    <input type="password" id="registerPassword" required minlength="8">
+                </div>
+                <div class="form-field">
+                    <label>Confirm Password</label>
+                    <input type="password" id="registerConfirmPassword" required minlength="8">
+                </div>
+                <button type="submit" class="auth-submit">Register</button>
+            </form>
+            
+            <div class="auth-message" id="authMessage"></div>
+        </div>
+    </div>
+    
     <div class="top-bar">
         <div class="nav-tabs">
             <button class="nav-tab" data-tab="knowledge">General knowledge to pass MITOU</button>
@@ -654,7 +1106,13 @@ function getHTMLPage(): string {
             <button class="toggle-btn" id="aiReviewToggle" onclick="toggleAIReview()">
                 <span id="aiReviewLabel">AI review</span>: <span id="aiReviewStatus">OFF</span>
             </button>
-            <button class="action-btn disabled" id="saveBtn" title="Login required">Save</button>
+            <div class="user-info" id="userInfo">
+                <span class="user-email" id="userEmail"></span>
+                <button class="logout-btn" onclick="handleLogout()">Logout</button>
+            </div>
+            <button class="action-btn" id="loginBtn" onclick="openAuthModal()">Login</button>
+            <button class="action-btn" id="saveBtn" onclick="saveToCloud()">Save</button>
+            <button class="action-btn" id="loadBtn" onclick="loadFromCloud()">Load</button>
             <button class="action-btn" id="previewBtn" onclick="previewDocument()">Preview</button>
             <button class="action-btn primary" id="downloadLatexBtn" onclick="downloadLatex()">Download LaTeX</button>
             <button class="action-btn primary" id="downloadPdfBtn" onclick="downloadPDF()">Download PDF</button>
@@ -912,6 +1370,253 @@ function getHTMLPage(): string {
     </div>
     
     <script>
+        // Authentication state
+        let authToken = localStorage.getItem('authToken');
+        let userEmail = localStorage.getItem('userEmail');
+        
+        // Update UI based on auth state
+        function updateAuthUI() {
+            const loginBtn = document.getElementById('loginBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const loadBtn = document.getElementById('loadBtn');
+            const userInfo = document.getElementById('userInfo');
+            const userEmailSpan = document.getElementById('userEmail');
+            
+            if (authToken && userEmail) {
+                // User is logged in
+                loginBtn.style.display = 'none';
+                saveBtn.style.display = 'inline-block';
+                loadBtn.style.display = 'inline-block';
+                userInfo.classList.add('active');
+                userEmailSpan.textContent = userEmail;
+            } else {
+                // User is not logged in
+                loginBtn.style.display = 'inline-block';
+                saveBtn.style.display = 'none';
+                loadBtn.style.display = 'none';
+                userInfo.classList.remove('active');
+            }
+        }
+        
+        // Open auth modal
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+        }
+        
+        // Close auth modal
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+            document.getElementById('authMessage').classList.remove('active');
+        }
+        
+        // Switch auth tab
+        function switchAuthTab(tab) {
+            const tabs = document.querySelectorAll('.auth-tab');
+            const forms = document.querySelectorAll('.auth-form');
+            
+            tabs.forEach(t => {
+                if (t.textContent.toLowerCase() === tab) {
+                    t.classList.add('active');
+                } else {
+                    t.classList.remove('active');
+                }
+            });
+            
+            forms.forEach(f => {
+                if (f.id === tab + 'Form') {
+                    f.classList.add('active');
+                } else {
+                    f.classList.remove('active');
+                }
+            });
+            
+            document.getElementById('authMessage').classList.remove('active');
+        }
+        
+        // Show auth message
+        function showAuthMessage(message, isSuccess) {
+            const messageEl = document.getElementById('authMessage');
+            messageEl.textContent = message;
+            messageEl.classList.remove('success', 'error');
+            messageEl.classList.add(isSuccess ? 'success' : 'error');
+            messageEl.classList.add('active');
+        }
+        
+        // Handle registration
+        async function handleRegister(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                showAuthMessage('Passwords do not match', false);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    authToken = result.token;
+                    userEmail = result.email;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('userEmail', userEmail);
+                    
+                    showAuthMessage(result.message, true);
+                    setTimeout(() => {
+                        closeAuthModal();
+                        updateAuthUI();
+                    }, 1500);
+                } else {
+                    showAuthMessage(result.message, false);
+                }
+            } catch (error) {
+                showAuthMessage('Registration failed. Please try again.', false);
+            }
+        }
+        
+        // Handle login
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    authToken = result.token;
+                    userEmail = result.email;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('userEmail', userEmail);
+                    
+                    showAuthMessage(result.message, true);
+                    setTimeout(() => {
+                        closeAuthModal();
+                        updateAuthUI();
+                        loadFromCloud(); // Auto-load user's saved data
+                    }, 1500);
+                } else {
+                    showAuthMessage(result.message, false);
+                }
+            } catch (error) {
+                showAuthMessage('Login failed. Please try again.', false);
+            }
+        }
+        
+        // Handle logout
+        function handleLogout() {
+            authToken = null;
+            userEmail = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userEmail');
+            updateAuthUI();
+            alert('Logged out successfully');
+        }
+        
+        // Save to cloud
+        async function saveToCloud() {
+            if (!authToken || !userEmail) {
+                alert('Please login first');
+                openAuthModal();
+                return;
+            }
+            
+            const form = document.getElementById('applicationForm');
+            const formData = new FormData(form);
+            const data = { email: userEmail };
+            
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            
+            try {
+                const response = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Data saved successfully to cloud!');
+                } else {
+                    alert('Failed to save: ' + result.message);
+                }
+            } catch (error) {
+                alert('Failed to save data. Please try again.');
+            }
+        }
+        
+        // Load from cloud
+        async function loadFromCloud() {
+            if (!authToken || !userEmail) {
+                alert('Please login first');
+                openAuthModal();
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/load', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ email: userEmail })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.formData) {
+                    // Load data into form
+                    Object.keys(result.formData).forEach(key => {
+                        const input = document.getElementById(key);
+                        if (input) {
+                            input.value = result.formData[key];
+                            // Also save to localStorage for consistency
+                            localStorage.setItem(key, result.formData[key]);
+                        }
+                    });
+                    alert('Data loaded successfully from cloud!');
+                } else if (result.success && !result.formData) {
+                    alert('No saved data found in cloud');
+                } else {
+                    alert('Failed to load: ' + result.message);
+                }
+            } catch (error) {
+                alert('Failed to load data. Please try again.');
+            }
+        }
+        
+        // Initialize auth UI on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAuthUI();
+        });
+        
         // Language translations
         const translations = {
             ja: {
@@ -1621,8 +2326,200 @@ function getHTMLPage(): string {
  * Main request handler
  */
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    
+    // Handle CORS preflight requests
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      });
+    }
+    
+    // Handle account registration
+    if (url.pathname === '/api/register' && request.method === 'POST') {
+      try {
+        const { email, password } = await request.json() as RegisterRequest;
+        const result = await registerUser(env, email, password);
+        
+        return new Response(JSON.stringify(result), {
+          status: result.success ? 200 : 400,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          message: 'Invalid request data'
+        }), { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // Handle user login
+    if (url.pathname === '/api/login' && request.method === 'POST') {
+      try {
+        const { email, password } = await request.json() as LoginRequest;
+        const result = await loginUser(env, email, password);
+        
+        return new Response(JSON.stringify(result), {
+          status: result.success ? 200 : 401,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          message: 'Invalid request data'
+        }), { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // Handle save user memory
+    if (url.pathname === '/api/save' && request.method === 'POST') {
+      try {
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+          return new Response(JSON.stringify({
+            success: false,
+            message: 'Unauthorized'
+          }), { 
+            status: 401,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const data = await request.json() as any;
+        const email = data.email;
+        
+        if (!email) {
+          return new Response(JSON.stringify({
+            success: false,
+            message: 'Email required'
+          }), { 
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const sectionData: SectionData = {
+          projectName: data.projectName || '',
+          applicantName: data.applicantName || '',
+          section1_1: data.section1_1 || '',
+          section1_2_1: data.section1_2_1 || '',
+          section1_2_2: data.section1_2_2 || '',
+          section1_2_3: data.section1_2_3 || '',
+          section1_3: data.section1_3 || '',
+          section1_4: data.section1_4 || '',
+          section2_1: data.section2_1 || '',
+          section2_2: data.section2_2 || '',
+          section3: data.section3 || '',
+          section4_1_1: data.section4_1_1 || '',
+          section4_1_2: data.section4_1_2 || '',
+          section4_1_3: data.section4_1_3 || '',
+          section4_2: data.section4_2 || '',
+          section4_3: data.section4_3 || '',
+          section4_4_1: data.section4_4_1 || '',
+          section4_4_2: data.section4_4_2 || '',
+          section5: data.section5 || '',
+          section6: data.section6 || '',
+          section7: data.section7 || '',
+          section8: data.section8 || ''
+        };
+        
+        const success = await saveUserMemory(env, email, sectionData);
+        
+        return new Response(JSON.stringify({
+          success,
+          message: success ? 'Data saved successfully' : 'Failed to save data'
+        }), {
+          status: success ? 200 : 500,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          message: 'Invalid request data'
+        }), { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // Handle load user memory
+    if (url.pathname === '/api/load' && request.method === 'POST') {
+      try {
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+          return new Response(JSON.stringify({
+            success: false,
+            message: 'Unauthorized'
+          }), { 
+            status: 401,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const { email } = await request.json() as { email: string };
+        const formData = await loadUserMemory(env, email);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          formData
+        }), {
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          message: 'Invalid request data'
+        }), { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
     
     // Handle request for extracted sections data
     if (url.pathname === '/api/sections') {

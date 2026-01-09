@@ -3,5 +3,15 @@
   "name": "mitou",
   "main": "worker.ts",
   "compatibility_date": "2024-01-01",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    {
+      "binding": "ACCOUNTS",
+      "id": "placeholder_account_id"
+    },
+    {
+      "binding": "MEMORIES",
+      "id": "placeholder_memories_id"
+    }
+  ]
 }
