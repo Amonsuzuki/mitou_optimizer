@@ -64,6 +64,8 @@ jobs:
           
           # Update the configuration file using Node.js for proper JSON handling
           LAST_UPDATED=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+          export NEW_DEADLINE
+          export LAST_UPDATED
           node -e "
             const fs = require('fs');
             const config = {
@@ -72,13 +74,10 @@ jobs:
               note: 'This file is automatically updated by GitHub Actions. The deadline represents the MITOU IT project submission deadline in Japan Time (JST).'
             };
             fs.writeFileSync('deadline-config.json', JSON.stringify(config, null, 2) + '\n');
-          " -- "$NEW_DEADLINE" "$LAST_UPDATED"
+          "
           
           echo "Updated deadline-config.json"
           cat deadline-config.json
-        env:
-          NEW_DEADLINE: ${{ github.event.inputs.deadline }}
-          LAST_UPDATED: ${{ steps.update.outputs.last_updated }}
       
       - name: Commit and push changes
         if: steps.update.outputs.updated == 'true'
