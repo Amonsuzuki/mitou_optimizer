@@ -319,20 +319,90 @@ function getHTMLPage(submissionDeadline: string): string {
             z-index: 100;
         }
         
+        .sidebar-toggle {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .sidebar-toggle:hover {
+            background: #667eea;
+        }
+        
+        .sidebar-toggle span {
+            width: 20px;
+            height: 2px;
+            background: #667eea;
+            transition: all 0.3s;
+        }
+        
+        .sidebar-toggle:hover span {
+            background: white;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: -300px;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            transition: left 0.3s ease-in-out;
+            z-index: 1000;
+            overflow-y: auto;
+            padding-top: 80px;
+        }
+        
+        .sidebar.open {
+            left: 0;
+        }
+        
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 999;
+        }
+        
+        .sidebar-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
         .nav-tabs {
             display: flex;
-            max-width: 1200px;
-            margin: 0 auto;
-            border-bottom: 2px solid #e0e0e0;
+            flex-direction: column;
+            padding: 0;
         }
         
         .nav-tab {
-            flex: 1;
             padding: 15px 20px;
-            text-align: center;
+            text-align: left;
             cursor: pointer;
-            background: #f5f5f5;
+            background: white;
             border: none;
+            border-bottom: 1px solid #e0e0e0;
             font-size: 14px;
             font-weight: 600;
             color: #666;
@@ -340,13 +410,15 @@ function getHTMLPage(submissionDeadline: string): string {
         }
         
         .nav-tab:hover {
-            background: #e8e8e8;
+            background: #f5f5f5;
+            padding-left: 25px;
         }
         
         .nav-tab.active {
-            background: white;
+            background: #f0f4ff;
             color: #667eea;
-            border-bottom: 3px solid #667eea;
+            border-left: 4px solid #667eea;
+            padding-left: 16px;
         }
         
         .action-bar {
@@ -924,10 +996,38 @@ function getHTMLPage(submissionDeadline: string): string {
                 width: 100%;
                 justify-content: center;
             }
+            
+            .sidebar {
+                width: 85%;
+            }
+            
+            .sidebar-toggle {
+                left: 10px;
+                top: 10px;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    
+    <!-- Sidebar with Navigation -->
+    <div class="sidebar" id="sidebar">
+        <div class="nav-tabs">
+            <button class="nav-tab" data-tab="knowledge">General knowledge to pass MITOU</button>
+            <button class="nav-tab active" data-tab="editing">Editing page</button>
+            <button class="nav-tab" data-tab="examples">Successful applicants' examples</button>
+        </div>
+    </div>
+    
     <!-- Language Selector - Fixed at top right -->
     <div class="language-selector">
         <button class="lang-btn" onclick="switchLanguage('ja')" id="langJa" title="日本語" aria-label="Switch to Japanese">🇯🇵</button>
@@ -937,11 +1037,6 @@ function getHTMLPage(submissionDeadline: string): string {
     <div id="toastContainer" class="toast-container"></div>
     
     <div class="top-bar">
-        <div class="nav-tabs">
-            <button class="nav-tab" data-tab="knowledge">General knowledge to pass MITOU</button>
-            <button class="nav-tab active" data-tab="editing">Editing page</button>
-            <button class="nav-tab" data-tab="examples">Successful applicants' examples</button>
-        </div>
         <div class="action-bar">
             <div id="userInfoContainer" style="display: none;">
                 <div class="user-info">
@@ -1211,6 +1306,14 @@ function getHTMLPage(submissionDeadline: string): string {
     </div>
     
     <script>
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
+        }
+        
         // Language translations
         const translations = {
             ja: {
@@ -1541,10 +1644,11 @@ function getHTMLPage(submissionDeadline: string): string {
         function updateTranslations() {
             const t = translations[currentLang];
             
-            // Nav tabs
-            document.querySelectorAll('.nav-tab')[0].textContent = t.navKnowledge;
-            document.querySelectorAll('.nav-tab')[1].textContent = t.navEditing;
-            document.querySelectorAll('.nav-tab')[2].textContent = t.navExamples;
+            // Nav tabs in sidebar
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs[0].textContent = t.navKnowledge;
+            navTabs[1].textContent = t.navEditing;
+            navTabs[2].textContent = t.navExamples;
             
             // Update deadline label
             const deadlineLabel = document.querySelector('.deadline-label');
@@ -1765,6 +1869,14 @@ function getHTMLPage(submissionDeadline: string): string {
                     content.classList.remove('active');
                 });
                 document.getElementById(targetTab).classList.add('active');
+                
+                // Close sidebar after selecting a tab
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.querySelector('.sidebar-overlay');
+                if (sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
+                    overlay.classList.remove('show');
+                }
             });
         });
         
