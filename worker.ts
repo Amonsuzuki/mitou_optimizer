@@ -7,6 +7,17 @@
 
 // Import extracted sections data
 import extractedSectionsData from './extracted-sections.json';
+// Import deadline configuration
+import deadlineConfigRaw from './deadline-config.json';
+
+interface DeadlineConfig {
+  submissionDeadline: string;
+  lastUpdated: string;
+  note: string;
+}
+
+// Type-safe deadline configuration
+const deadlineConfig = deadlineConfigRaw as DeadlineConfig;
 
 interface SectionData {
   projectName: string;  // プロジェクト名
@@ -41,6 +52,31 @@ interface SectionData {
   section6: string;  // プロジェクト遂行にあたっての特記事項
   section7: string;  // ソフトウェア作成以外の勉強、特技、生活、趣味など
   section8: string;  // 将来のソフトウェア技術に対して思うこと・期待すること
+}
+
+/**
+ * Validates and sanitizes the deadline date string
+ * Security: Ensures the deadline is a valid ISO 8601 date to prevent injection attacks
+ */
+function sanitizeDeadline(deadline: string): string {
+  // Validate that it's a valid date string
+  const date = new Date(deadline);
+  if (isNaN(date.getTime())) {
+    // Fall back to a safe default if invalid
+    return '2026-12-31T23:59:59+09:00';
+  }
+  
+  // Validate that the string contains only safe characters for JavaScript string context
+  // Allow: digits, hyphens, colons, T, Z, plus/minus (for timezone), and dots (for milliseconds)
+  const safePattern = /^[0-9\-T:+Z.]+$/;
+  if (!safePattern.test(deadline)) {
+    // If contains potentially dangerous characters, convert to ISO string
+    return date.toISOString();
+  }
+  
+  // Return the original validated string to preserve timezone information
+  // This is safe because we've validated it's a valid date and contains only safe characters
+  return deadline;
 }
 
 /**
@@ -158,7 +194,10 @@ ${escapeLatex(data.section8)}
 /**
  * Generates the HTML form page
  */
-function getHTMLPage(): string {
+function getHTMLPage(submissionDeadline: string): string {
+  // SECURITY: Sanitize the deadline to prevent XSS injection
+  const safeDeadline = sanitizeDeadline(submissionDeadline);
+  
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1208,7 +1247,7 @@ function getHTMLPage(): string {
         // Function to calculate and update days left until deadline
         function updateDaysLeft() {
             const t = translations[currentLang];
-            const deadlineDate = new Date('2026-03-13T23:59:59+09:00'); // March 13, 2026, Japan Time
+            const deadlineDate = new Date('${safeDeadline}'); // Sanitized deadline from configuration
             const today = new Date();
             
             const diffTime = deadlineDate - today;
@@ -1688,7 +1727,7 @@ export default {
     }
     
     // Serve the HTML form for all other requests
-    return new Response(getHTMLPage(), {
+    return new Response(getHTMLPage(deadlineConfig.submissionDeadline), {
       headers: {
         'Content-Type': 'text/html; charset=utf-8'
       }
