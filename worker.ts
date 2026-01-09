@@ -223,6 +223,40 @@ function getHTMLPage(): string {
             justify-content: center;
             flex-wrap: wrap;
             border-bottom: 1px solid #e0e0e0;
+            position: relative;
+        }
+        
+        .language-selector {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 5px;
+            background: #f5f5f5;
+            padding: 5px;
+            border-radius: 6px;
+        }
+        
+        .lang-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: transparent;
+            color: #666;
+        }
+        
+        .lang-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .lang-btn.active {
+            background: #667eea;
+            color: white;
         }
         
         .action-btn {
@@ -469,10 +503,18 @@ function getHTMLPage(): string {
             
             .action-bar {
                 flex-direction: column;
+                padding-top: 60px;
             }
             
             .action-btn {
                 width: 100%;
+            }
+            
+            .language-selector {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                transform: none;
             }
         }
     </style>
@@ -492,6 +534,10 @@ function getHTMLPage(): string {
             <button class="action-btn" onclick="previewDocument()">Preview</button>
             <button class="action-btn primary" onclick="downloadLatex()">Download LaTeX</button>
             <button class="action-btn primary" onclick="downloadPDF()">Download PDF</button>
+            <div class="language-selector">
+                <button class="lang-btn" onclick="switchLanguage('ja')" id="langJa">日本語</button>
+                <button class="lang-btn" onclick="switchLanguage('en')" id="langEn">English</button>
+            </div>
         </div>
     </div>
     
@@ -723,10 +769,469 @@ function getHTMLPage(): string {
     </div>
     
     <script>
-        // Constants
-        const VALIDATION_ERROR_MSG = '必須項目を入力してください。';
-        const PDF_INSTRUCTION_MSG = 'PDF生成機能：\\n\\nLaTeXファイルをダウンロードした後、以下のいずれかの方法でPDFに変換してください：\\n\\n1. Overleaf (https://www.overleaf.com/) にアップロードして自動コンパイル\\n2. ローカルのLaTeX環境で "platex" コマンドを使用\\n3. Cloud LaTeX などのオンラインサービスを利用\\n\\n最も簡単な方法はOverleafの利用です。まずLaTeXファイルをダウンロードしてください。';
-        const PREVIEW_COMING_SOON_MSG = 'プレビュー機能は開発中です。現在はLaTeXファイルをダウンロードして、Overleafなどのサービスでプレビューしてください。';
+        // Language translations
+        const translations = {
+            ja: {
+                // Nav tabs
+                navKnowledge: "General knowledges to pass MITOU",
+                navEditing: "Editing page",
+                navExamples: "Successful applicants' examples",
+                
+                // Action bar
+                aiReview: "AI review",
+                aiOn: "ON",
+                aiOff: "OFF",
+                save: "Save",
+                preview: "Preview",
+                downloadLatex: "Download LaTeX",
+                downloadPDF: "Download PDF",
+                loginRequired: "Login required",
+                
+                // Knowledge tab
+                knowledgeTitle: "未踏IT人材発掘・育成事業について",
+                knowledgeSubtitle: "General Knowledge to Pass MITOU",
+                aboutMitouTitle: "未踏事業とは",
+                aboutMitouText: "未踏IT人材発掘・育成事業は、独立行政法人情報処理推進機構（IPA）が実施する、優れたIT人材を発掘・育成するためのプログラムです。",
+                eligibility: "対象：",
+                eligibilityText: "25歳未満の個人または5名以下のグループ",
+                funding: "支援額：",
+                fundingText: "最大300万円/人",
+                period: "期間：",
+                periodText: "約6ヶ月",
+                benefits: "特典：",
+                benefitsText: "プロジェクトマネージャー（PM）による指導、開発環境の提供",
+                screeningTitle: "審査のポイント",
+                originality: "独創性：",
+                originalityText: "既存のものとは異なる新しいアイデアか",
+                technicalSkill: "技術力：",
+                technicalSkillText: "実現するための技術的能力があるか",
+                feasibility: "実現可能性：",
+                feasibilityText: "期間内に完成できるか",
+                socialValue: "社会的意義：",
+                socialValueText: "世の中に価値を提供できるか",
+                passion: "熱意：",
+                passionText: "プロジェクトへの情熱が伝わるか",
+                tipsTitle: "申請書作成のコツ",
+                tipsBeSpecific: "具体的に書く：抽象的な表現ではなく、具体的な技術や数値を示す",
+                tipsClarifyBackground: "背景を明確に：なぜこのプロジェクトが必要なのかを丁寧に説明する",
+                tipsShowEvidence: "実績を示す：過去の作品やGitHubリポジトリで技術力を証明する",
+                tipsDetailPlan: "計画を詳細に：開発スケジュールと予算の使い道を明確にする",
+                tipsShowPassion: "情熱を伝える：なぜこのプロジェクトをやりたいのか、熱意を込める",
+                
+                // Editing tab
+                editingTitle: "未踏IT人材発掘・育成事業",
+                editingSubtitle: "提案プロジェクト詳細資料 作成ツール",
+                howToUseLabel: "使い方：",
+                howToUseText: "各セクションに内容を記入して「Download LaTeX」または「Download PDF」ボタンをクリックすると、ファイルがダウンロードされます。",
+                autoSaveText: "入力内容は自動的に保存されますので、安心して編集を進めてください。",
+                
+                projectName: "プロジェクト名",
+                projectNamePlaceholder: "例：AIを活用した教育支援システム",
+                applicantName: "申請者氏名",
+                applicantNamePlaceholder: "例：山田 太郎",
+                
+                // Sections
+                section1: "1. 何をつくるか",
+                section1_1: "1.1 概要",
+                section1_1_placeholder: "プロジェクトの概要を簡潔に説明してください...",
+                section1_2: "1.2 背景",
+                section1_2_1: "1.2.1 社会的背景",
+                section1_2_1_placeholder: "このプロジェクトを始める社会的な背景を説明してください...",
+                section1_2_2: "1.2.2 技術的背景",
+                section1_2_2_placeholder: "技術的な背景や既存技術の課題を説明してください...",
+                section1_2_3: "1.2.3 私的背景",
+                section1_2_3_placeholder: "あなた自身がこのプロジェクトを始める動機を説明してください...",
+                section1_3: "1.3 現状のプロトタイプ",
+                section1_3_placeholder: "既に作成しているプロトタイプがあれば説明してください...",
+                section1_4: "1.4 提案の目標",
+                section1_4_placeholder: "このプロジェクトで達成したい目標を説明してください...",
+                
+                section2: "2. 斬新さの主張、期待される効果など",
+                section2_1: "2.1 斬新さ(未踏性)の主張",
+                section2_1_placeholder: "プロジェクトの独創性や新規性について説明してください...",
+                section2_2: "2.2 期待される効果",
+                section2_2_placeholder: "このプロジェクトによって得られる効果を説明してください...",
+                
+                section3: "3. どんな出し方を考えているか",
+                section3_placeholder: "成果物の公開方法や展開について説明してください...",
+                
+                section4: "4. 具体的な進め方と予算",
+                section4_1: "4.1 開発環境",
+                section4_1_1: "4.1.1 開発を行う場所",
+                section4_1_1_placeholder: "開発を行う場所について説明してください...",
+                section4_1_2: "4.1.2 計算機環境",
+                section4_1_2_placeholder: "使用する計算機環境について説明してください...",
+                section4_1_3: "4.1.3 使用するツール群",
+                section4_1_3_placeholder: "使用する開発ツールやライブラリを列挙してください...",
+                section4_2: "4.2 事業期間中の開発内容（タスクベース）",
+                section4_2_placeholder: "開発するタスクを具体的に列挙してください...",
+                section4_3: "4.3 開発線表",
+                section4_3_placeholder: "月ごとの開発スケジュールを説明してください...",
+                section4_4: "4.4 資金",
+                section4_4_1: "4.4.1 開発にかける時間",
+                section4_4_1_placeholder: "週あたりの開発時間など、時間の使い方を説明してください...",
+                section4_4_2: "4.4.2 予算内訳",
+                section4_4_2_placeholder: "予算の使い道を項目ごとに説明してください...",
+                
+                section5: "5. 私の腕前を証明できるもの",
+                section5_placeholder: "過去の作品、GitHubリポジトリ、技術ブログ、受賞歴などを紹介してください...",
+                
+                section6: "6. プロジェクト遂行にあたっての特記事項",
+                section6_placeholder: "協力者、使用する技術、その他特記事項があれば記述してください...",
+                
+                section7: "7. ソフトウェア作成以外の勉強、特技、生活、趣味など",
+                section7_placeholder: "あなた自身について自由に記述してください...",
+                
+                section8: "8. 将来のソフトウェア技術に対して思うこと・期待すること",
+                section8_placeholder: "ソフトウェア技術の将来についてあなたの考えを述べてください...",
+                
+                // Examples tab
+                examplesTitle: "合格者の申請書例",
+                examplesSubtitle: "Successful Applicants' Examples",
+                examplesIntro: "以下は実際に未踏事業に採択された申請書の例です。参考にして、あなた自身の申請書を作成してください。",
+                example1Title: "例1：和田 卓人さん",
+                example1Desc: "未踏一次審査資料の例です。",
+                example2Title: "例2：水野 竣介さん",
+                example2Desc: "提案プロジェクト詳細資料の例です。",
+                openPdf: "📄 PDFを開く",
+                referencePointsLabel: "参考にする際のポイント：",
+                referencePoint1: "各セクションの書き方や分量を参考にする",
+                referencePoint2: "技術的な詳細度を確認する",
+                referencePoint3: "スケジュールや予算の記載方法を学ぶ",
+                referencePoint4: "ただし、丸写しは避け、自分の言葉で書くこと",
+                
+                // Loading and error messages
+                generating: "ファイルを生成中...",
+                errorPrefix: "",
+                
+                // Alert messages
+                validationError: "必須項目を入力してください。",
+                pdfInstruction: "PDF生成機能：\\n\\nLaTeXファイルをダウンロードした後、以下のいずれかの方法でPDFに変換してください：\\n\\n1. Overleaf (https://www.overleaf.com/) にアップロードして自動コンパイル\\n2. ローカルのLaTeX環境で \\"platex\\" コマンドを使用\\n3. Cloud LaTeX などのオンラインサービスを利用\\n\\n最も簡単な方法はOverleafの利用です。まずLaTeXファイルをダウンロードしてください。",
+                previewComingSoon: "プレビュー機能は開発中です。現在はLaTeXファイルをダウンロードして、Overleafなどのサービスでプレビューしてください。"
+            },
+            en: {
+                // Nav tabs
+                navKnowledge: "General knowledges to pass MITOU",
+                navEditing: "Editing page",
+                navExamples: "Successful applicants' examples",
+                
+                // Action bar
+                aiReview: "AI review",
+                aiOn: "ON",
+                aiOff: "OFF",
+                save: "Save",
+                preview: "Preview",
+                downloadLatex: "Download LaTeX",
+                downloadPDF: "Download PDF",
+                loginRequired: "Login required",
+                
+                // Knowledge tab
+                knowledgeTitle: "About MITOU IT Personnel Discovery and Development Project",
+                knowledgeSubtitle: "General Knowledge to Pass MITOU",
+                aboutMitouTitle: "What is MITOU Project?",
+                aboutMitouText: "The MITOU IT Personnel Discovery and Development Project is a program operated by IPA (Information-technology Promotion Agency, Japan) to discover and nurture excellent IT talent.",
+                eligibility: "Eligibility:",
+                eligibilityText: "Individuals under 25 or groups of up to 5 people",
+                funding: "Funding:",
+                fundingText: "Up to 3 million yen per person",
+                period: "Period:",
+                periodText: "Approximately 6 months",
+                benefits: "Benefits:",
+                benefitsText: "Guidance from Project Managers (PM) and development environment provision",
+                screeningTitle: "Screening Points",
+                originality: "Originality:",
+                originalityText: "Is it a new idea different from existing ones?",
+                technicalSkill: "Technical Skills:",
+                technicalSkillText: "Do you have the technical ability to realize it?",
+                feasibility: "Feasibility:",
+                feasibilityText: "Can it be completed within the period?",
+                socialValue: "Social Value:",
+                socialValueText: "Can it provide value to society?",
+                passion: "Passion:",
+                passionText: "Does your passion for the project come through?",
+                tipsTitle: "Tips for Writing Applications",
+                tipsBeSpecific: "Be specific: Show specific technologies and numbers rather than abstract expressions",
+                tipsClarifyBackground: "Clarify background: Carefully explain why this project is necessary",
+                tipsShowEvidence: "Show evidence: Prove your technical skills with past works and GitHub repositories",
+                tipsDetailPlan: "Detail your plan: Clearly specify development schedule and budget allocation",
+                tipsShowPassion: "Convey passion: Express your enthusiasm for why you want to do this project",
+                
+                // Editing tab
+                editingTitle: "MITOU IT Personnel Discovery and Development Project",
+                editingSubtitle: "Proposal Project Detailed Document Creation Tool",
+                howToUseLabel: "How to use:",
+                howToUseText: "Fill in each section and click \\"Download LaTeX\\" or \\"Download PDF\\" button to download the file.",
+                autoSaveText: "Your input is automatically saved, so you can edit with confidence.",
+                
+                projectName: "Project Name",
+                projectNamePlaceholder: "e.g., AI-based Educational Support System",
+                applicantName: "Applicant Name",
+                applicantNamePlaceholder: "e.g., Taro Yamada",
+                
+                // Sections
+                section1: "1. What to Create",
+                section1_1: "1.1 Overview",
+                section1_1_placeholder: "Please briefly describe the overview of your project...",
+                section1_2: "1.2 Background",
+                section1_2_1: "1.2.1 Social Background",
+                section1_2_1_placeholder: "Please explain the social background for starting this project...",
+                section1_2_2: "1.2.2 Technical Background",
+                section1_2_2_placeholder: "Please explain the technical background and challenges of existing technologies...",
+                section1_2_3: "1.2.3 Personal Background",
+                section1_2_3_placeholder: "Please explain your personal motivation for starting this project...",
+                section1_3: "1.3 Current Prototype",
+                section1_3_placeholder: "If you have already created a prototype, please describe it...",
+                section1_4: "1.4 Proposal Goals",
+                section1_4_placeholder: "Please explain the goals you want to achieve with this project...",
+                
+                section2: "2. Innovation Claims and Expected Effects",
+                section2_1: "2.1 Innovation (Unexplored Nature) Claims",
+                section2_1_placeholder: "Please explain the originality and novelty of your project...",
+                section2_2: "2.2 Expected Effects",
+                section2_2_placeholder: "Please explain the effects that will be obtained through this project...",
+                
+                section3: "3. How to Release",
+                section3_placeholder: "Please explain the release method and deployment of your deliverables...",
+                
+                section4: "4. Specific Approach and Budget",
+                section4_1: "4.1 Development Environment",
+                section4_1_1: "4.1.1 Development Location",
+                section4_1_1_placeholder: "Please explain where you will develop...",
+                section4_1_2: "4.1.2 Computing Environment",
+                section4_1_2_placeholder: "Please explain the computing environment you will use...",
+                section4_1_3: "4.1.3 Tools to Use",
+                section4_1_3_placeholder: "Please list the development tools and libraries you will use...",
+                section4_2: "4.2 Development Content During Project Period (Task-based)",
+                section4_2_placeholder: "Please list the specific tasks to be developed...",
+                section4_3: "4.3 Development Schedule",
+                section4_3_placeholder: "Please explain the monthly development schedule...",
+                section4_4: "4.4 Budget",
+                section4_4_1: "4.4.1 Time for Development",
+                section4_4_1_placeholder: "Please explain how you will use your time, such as development hours per week...",
+                section4_4_2: "4.4.2 Budget Breakdown",
+                section4_4_2_placeholder: "Please explain how the budget will be used by item...",
+                
+                section5: "5. Evidence of My Skills",
+                section5_placeholder: "Please introduce past works, GitHub repositories, technical blogs, awards, etc...",
+                
+                section6: "6. Special Notes for Project Execution",
+                section6_placeholder: "If there are any collaborators, technologies to use, or other special notes, please describe them...",
+                
+                section7: "7. Studies, Skills, Life, Hobbies, etc. Other Than Software Development",
+                section7_placeholder: "Please freely describe yourself...",
+                
+                section8: "8. Thoughts and Expectations for Future Software Technology",
+                section8_placeholder: "Please express your thoughts on the future of software technology...",
+                
+                // Examples tab
+                examplesTitle: "Successful Applicants' Examples",
+                examplesSubtitle: "Successful Applicants' Examples",
+                examplesIntro: "Below are examples of application documents that were actually accepted for the MITOU project. Please use them as reference to create your own application.",
+                example1Title: "Example 1: Takuto Wada",
+                example1Desc: "Example of MITOU first-round screening document.",
+                example2Title: "Example 2: Shunsuke Mizuno",
+                example2Desc: "Example of proposal project detailed document.",
+                openPdf: "📄 Open PDF",
+                referencePointsLabel: "Key points when referencing:",
+                referencePoint1: "Reference the writing style and content length of each section",
+                referencePoint2: "Check the level of technical detail",
+                referencePoint3: "Learn how to describe schedules and budgets",
+                referencePoint4: "However, avoid copying verbatim and write in your own words",
+                
+                // Loading and error messages
+                generating: "Generating file...",
+                errorPrefix: "",
+                
+                // Alert messages
+                validationError: "Please fill in all required fields.",
+                pdfInstruction: "PDF Generation Feature:\\n\\nAfter downloading the LaTeX file, please convert it to PDF using one of the following methods:\\n\\n1. Upload to Overleaf (https://www.overleaf.com/) for automatic compilation\\n2. Use the \\"platex\\" command in your local LaTeX environment\\n3. Use online services like Cloud LaTeX\\n\\nThe easiest method is using Overleaf. First, please download the LaTeX file.",
+                previewComingSoon: "The preview feature is under development. Currently, please download the LaTeX file and preview it using services like Overleaf."
+            }
+        };
+        
+        // Current language
+        let currentLang = localStorage.getItem('language') || 'ja';
+        
+        // Function to switch language
+        function switchLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('language', lang);
+            
+            // Update active button
+            document.getElementById('langJa').classList.toggle('active', lang === 'ja');
+            document.getElementById('langEn').classList.toggle('active', lang === 'en');
+            
+            // Update all translatable elements
+            updateTranslations();
+        }
+        
+        // Function to update all translations
+        function updateTranslations() {
+            const t = translations[currentLang];
+            
+            // Nav tabs
+            document.querySelectorAll('.nav-tab')[0].textContent = t.navKnowledge;
+            document.querySelectorAll('.nav-tab')[1].textContent = t.navEditing;
+            document.querySelectorAll('.nav-tab')[2].textContent = t.navExamples;
+            
+            // Action bar
+            const aiReviewToggle = document.getElementById('aiReviewToggle');
+            aiReviewToggle.childNodes[0].textContent = t.aiReview + ': ';
+            document.getElementById('saveBtn').textContent = t.save;
+            document.getElementById('saveBtn').title = t.loginRequired;
+            document.querySelectorAll('.action-btn')[1].textContent = t.preview;
+            document.querySelectorAll('.action-btn')[2].textContent = t.downloadLatex;
+            document.querySelectorAll('.action-btn')[3].textContent = t.downloadPDF;
+            
+            // Knowledge tab
+            const knowledgeTab = document.getElementById('knowledge');
+            knowledgeTab.querySelector('h1').textContent = t.knowledgeTitle;
+            knowledgeTab.querySelector('.subtitle').textContent = t.knowledgeSubtitle;
+            
+            const knowledgeInfoBoxes = knowledgeTab.querySelectorAll('.info-box');
+            knowledgeInfoBoxes[0].querySelector('h3').textContent = t.aboutMitouTitle;
+            knowledgeInfoBoxes[0].querySelector('p').textContent = t.aboutMitouText;
+            const aboutList = knowledgeInfoBoxes[0].querySelectorAll('li');
+            aboutList[0].innerHTML = '<strong>' + t.eligibility + '</strong>' + t.eligibilityText;
+            aboutList[1].innerHTML = '<strong>' + t.funding + '</strong>' + t.fundingText;
+            aboutList[2].innerHTML = '<strong>' + t.period + '</strong>' + t.periodText;
+            aboutList[3].innerHTML = '<strong>' + t.benefits + '</strong>' + t.benefitsText;
+            
+            knowledgeInfoBoxes[1].querySelector('h3').textContent = t.screeningTitle;
+            const screeningList = knowledgeInfoBoxes[1].querySelectorAll('li');
+            screeningList[0].innerHTML = '<strong>' + t.originality + '</strong>' + t.originalityText;
+            screeningList[1].innerHTML = '<strong>' + t.technicalSkill + '</strong>' + t.technicalSkillText;
+            screeningList[2].innerHTML = '<strong>' + t.feasibility + '</strong>' + t.feasibilityText;
+            screeningList[3].innerHTML = '<strong>' + t.socialValue + '</strong>' + t.socialValueText;
+            screeningList[4].innerHTML = '<strong>' + t.passion + '</strong>' + t.passionText;
+            
+            knowledgeInfoBoxes[2].querySelector('h3').textContent = t.tipsTitle;
+            const tipsList = knowledgeInfoBoxes[2].querySelectorAll('li');
+            tipsList[0].textContent = t.tipsBeSpecific;
+            tipsList[1].textContent = t.tipsClarifyBackground;
+            tipsList[2].textContent = t.tipsShowEvidence;
+            tipsList[3].textContent = t.tipsDetailPlan;
+            tipsList[4].textContent = t.tipsShowPassion;
+            
+            // Editing tab
+            const editingTab = document.getElementById('editing');
+            editingTab.querySelector('h1').textContent = t.editingTitle;
+            editingTab.querySelector('.subtitle').textContent = t.editingSubtitle;
+            
+            const editingInfoBox = editingTab.querySelector('.info-box');
+            editingInfoBox.querySelectorAll('p')[0].innerHTML = '<strong>' + t.howToUseLabel + '</strong>';
+            editingInfoBox.querySelectorAll('p')[1].textContent = t.howToUseText;
+            editingInfoBox.querySelectorAll('p')[2].textContent = t.autoSaveText;
+            
+            // Form labels and placeholders
+            const formLabels = editingTab.querySelectorAll('label');
+            const formInputs = editingTab.querySelectorAll('input, textarea');
+            
+            formLabels[0].textContent = t.projectName;
+            document.getElementById('projectName').placeholder = t.projectNamePlaceholder;
+            formLabels[1].textContent = t.applicantName;
+            document.getElementById('applicantName').placeholder = t.applicantNamePlaceholder;
+            
+            editingTab.querySelectorAll('h2')[0].textContent = t.section1;
+            formLabels[2].textContent = t.section1_1;
+            document.getElementById('section1_1').placeholder = t.section1_1_placeholder;
+            
+            editingTab.querySelectorAll('h3')[0].textContent = t.section1_2;
+            formLabels[3].textContent = t.section1_2_1;
+            document.getElementById('section1_2_1').placeholder = t.section1_2_1_placeholder;
+            formLabels[4].textContent = t.section1_2_2;
+            document.getElementById('section1_2_2').placeholder = t.section1_2_2_placeholder;
+            formLabels[5].textContent = t.section1_2_3;
+            document.getElementById('section1_2_3').placeholder = t.section1_2_3_placeholder;
+            
+            formLabels[6].textContent = t.section1_3;
+            document.getElementById('section1_3').placeholder = t.section1_3_placeholder;
+            formLabels[7].textContent = t.section1_4;
+            document.getElementById('section1_4').placeholder = t.section1_4_placeholder;
+            
+            editingTab.querySelectorAll('h2')[1].textContent = t.section2;
+            formLabels[8].textContent = t.section2_1;
+            document.getElementById('section2_1').placeholder = t.section2_1_placeholder;
+            formLabels[9].textContent = t.section2_2;
+            document.getElementById('section2_2').placeholder = t.section2_2_placeholder;
+            
+            editingTab.querySelectorAll('h2')[2].textContent = t.section3;
+            document.getElementById('section3').placeholder = t.section3_placeholder;
+            
+            editingTab.querySelectorAll('h2')[3].textContent = t.section4;
+            editingTab.querySelectorAll('h3')[1].textContent = t.section4_1;
+            formLabels[10].textContent = t.section4_1_1;
+            document.getElementById('section4_1_1').placeholder = t.section4_1_1_placeholder;
+            formLabels[11].textContent = t.section4_1_2;
+            document.getElementById('section4_1_2').placeholder = t.section4_1_2_placeholder;
+            formLabels[12].textContent = t.section4_1_3;
+            document.getElementById('section4_1_3').placeholder = t.section4_1_3_placeholder;
+            
+            formLabels[13].textContent = t.section4_2;
+            document.getElementById('section4_2').placeholder = t.section4_2_placeholder;
+            formLabels[14].textContent = t.section4_3;
+            document.getElementById('section4_3').placeholder = t.section4_3_placeholder;
+            
+            editingTab.querySelectorAll('h3')[2].textContent = t.section4_4;
+            formLabels[15].textContent = t.section4_4_1;
+            document.getElementById('section4_4_1').placeholder = t.section4_4_1_placeholder;
+            formLabels[16].textContent = t.section4_4_2;
+            document.getElementById('section4_4_2').placeholder = t.section4_4_2_placeholder;
+            
+            editingTab.querySelectorAll('h2')[4].textContent = t.section5;
+            document.getElementById('section5').placeholder = t.section5_placeholder;
+            
+            editingTab.querySelectorAll('h2')[5].textContent = t.section6;
+            document.getElementById('section6').placeholder = t.section6_placeholder;
+            
+            editingTab.querySelectorAll('h2')[6].textContent = t.section7;
+            document.getElementById('section7').placeholder = t.section7_placeholder;
+            
+            editingTab.querySelectorAll('h2')[7].textContent = t.section8;
+            document.getElementById('section8').placeholder = t.section8_placeholder;
+            
+            // Loading and error
+            document.querySelector('#loading p').textContent = t.generating;
+            
+            // Examples tab
+            const examplesTab = document.getElementById('examples');
+            examplesTab.querySelector('h1').textContent = t.examplesTitle;
+            examplesTab.querySelector('.subtitle').textContent = t.examplesSubtitle;
+            
+            const examplesInfoBoxes = examplesTab.querySelectorAll('.info-box');
+            examplesInfoBoxes[0].querySelector('p').textContent = t.examplesIntro;
+            
+            const exampleCards = examplesTab.querySelectorAll('.example-card');
+            exampleCards[0].querySelector('h3').textContent = t.example1Title;
+            exampleCards[0].querySelectorAll('p')[0].textContent = t.example1Desc;
+            exampleCards[0].querySelectorAll('a')[0].textContent = t.openPdf;
+            
+            exampleCards[1].querySelector('h3').textContent = t.example2Title;
+            exampleCards[1].querySelectorAll('p')[0].textContent = t.example2Desc;
+            exampleCards[1].querySelectorAll('a')[0].textContent = t.openPdf;
+            
+            examplesInfoBoxes[1].querySelectorAll('p')[0].innerHTML = '<strong>' + t.referencePointsLabel + '</strong>';
+            const refList = examplesInfoBoxes[1].querySelectorAll('li');
+            refList[0].textContent = t.referencePoint1;
+            refList[1].textContent = t.referencePoint2;
+            refList[2].textContent = t.referencePoint3;
+            refList[3].textContent = t.referencePoint4;
+            
+            // Update constants for alerts
+            window.VALIDATION_ERROR_MSG = t.validationError;
+            window.PDF_INSTRUCTION_MSG = t.pdfInstruction;
+            window.PREVIEW_COMING_SOON_MSG = t.previewComingSoon;
+        }
+        
+        // Initialize language on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            switchLanguage(currentLang);
+        });
+        
+        // Constants (will be overridden by translation system)
+        window.VALIDATION_ERROR_MSG = '必須項目を入力してください。';
+        window.PDF_INSTRUCTION_MSG = 'PDF生成機能：\\n\\nLaTeXファイルをダウンロードした後、以下のいずれかの方法でPDFに変換してください：\\n\\n1. Overleaf (https://www.overleaf.com/) にアップロードして自動コンパイル\\n2. ローカルのLaTeX環境で "platex" コマンドを使用\\n3. Cloud LaTeX などのオンラインサービスを利用\\n\\n最も簡単な方法はOverleafの利用です。まずLaTeXファイルをダウンロードしてください。';
+        window.PREVIEW_COMING_SOON_MSG = 'プレビュー機能は開発中です。現在はLaTeXファイルをダウンロードして、Overleafなどのサービスでプレビューしてください。';
         
         // Tab switching
         document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -765,7 +1270,7 @@ function getHTMLPage(): string {
         async function downloadLatex() {
             const form = document.getElementById('applicationForm');
             if (!form.checkValidity()) {
-                alert(VALIDATION_ERROR_MSG);
+                alert(window.VALIDATION_ERROR_MSG);
                 form.reportValidity();
                 return;
             }
@@ -822,12 +1327,12 @@ function getHTMLPage(): string {
         async function downloadPDF() {
             const form = document.getElementById('applicationForm');
             if (!form.checkValidity()) {
-                alert(VALIDATION_ERROR_MSG);
+                alert(window.VALIDATION_ERROR_MSG);
                 form.reportValidity();
                 return;
             }
             
-            alert(PDF_INSTRUCTION_MSG);
+            alert(window.PDF_INSTRUCTION_MSG);
             
             // Also trigger LaTeX download
             await downloadLatex();
@@ -835,7 +1340,7 @@ function getHTMLPage(): string {
         
         // Preview
         function previewDocument() {
-            alert(PREVIEW_COMING_SOON_MSG);
+            alert(window.PREVIEW_COMING_SOON_MSG);
         }
         
         // Auto-save to localStorage
