@@ -14,6 +14,8 @@ import extractedSectionsData from './extracted-sections.json';
 interface Env {
   USERS_KV: KVNamespace;
   MEMORIES_KV: KVNamespace;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 }
 
 /**
@@ -691,6 +693,85 @@ function getHTMLPage(): string {
             font-style: italic;
         }
         
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+        
+        .toast {
+            background: white;
+            border-radius: 8px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid #667eea;
+        }
+        
+        .toast.success {
+            border-left-color: #4caf50;
+        }
+        
+        .toast.error {
+            border-left-color: #f44336;
+        }
+        
+        .toast.warning {
+            border-left-color: #ff9800;
+        }
+        
+        .toast-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .toast-message {
+            flex: 1;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .toast-close:hover {
+            background: #f5f5f5;
+            color: #666;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
         .user-info {
             display: flex;
             align-items: center;
@@ -802,6 +883,9 @@ function getHTMLPage(): string {
     </style>
 </head>
 <body>
+    <!-- Toast notification container -->
+    <div id="toastContainer" class="toast-container"></div>
+    
     <div class="top-bar">
         <div class="nav-tabs">
             <button class="nav-tab" data-tab="knowledge">General knowledge to pass MITOU</button>
@@ -1583,6 +1667,44 @@ function getHTMLPage(): string {
         window.PDF_INSTRUCTION_MSG = 'PDF生成機能：\\n\\nLaTeXファイルをダウンロードした後、以下のいずれかの方法でPDFに変換してください：\\n\\n1. Overleaf (https://www.overleaf.com/) にアップロードして自動コンパイル\\n2. ローカルのLaTeX環境で "platex" コマンドを使用\\n3. Cloud LaTeX などのオンラインサービスを利用\\n\\n最も簡単な方法はOverleafの利用です。まずLaTeXファイルをダウンロードしてください。';
         window.PREVIEW_COMING_SOON_MSG = 'プレビュー機能は開発中です。現在はLaTeXファイルをダウンロードして、Overleafなどのサービスでプレビューしてください。';
         
+        // Toast notification system
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            
+            const icons = {
+                success: '✓',
+                error: '✕',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+            
+            const icon = document.createElement('span');
+            icon.className = 'toast-icon';
+            icon.textContent = icons[type] || icons.info;
+            
+            const msg = document.createElement('span');
+            msg.className = 'toast-message';
+            msg.textContent = message;
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'toast-close';
+            closeBtn.textContent = '×';
+            closeBtn.onclick = function() { toast.remove(); };
+            
+            toast.appendChild(icon);
+            toast.appendChild(msg);
+            toast.appendChild(closeBtn);
+            container.appendChild(toast);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+        
         // Tab switching
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', function() {
@@ -1687,13 +1809,18 @@ function getHTMLPage(): string {
                 const response = await fetch('/api/auth/google/url');
                 const data = await response.json();
                 
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+                
                 if (data.authUrl) {
                     // Redirect to Google OAuth
                     window.location.href = data.authUrl;
                 }
             } catch (error) {
                 console.error('Login failed:', error);
-                alert('ログインに失敗しました。もう一度お試しください。\\nLogin failed. Please try again.');
+                showToast('ログインに失敗しました。もう一度お試しください。 / Login failed. Please try again.', 'error');
             }
         }
         
@@ -1717,13 +1844,13 @@ function getHTMLPage(): string {
             localStorage.removeItem('sessionToken');
             showLoginButton();
             disableSaveButton();
-            alert('ログアウトしました。\\nLogged out successfully.');
+            showToast('ログアウトしました。 / Logged out successfully.', 'success');
         }
         
         // Save draft
         async function saveDraft() {
             if (!currentUser || !sessionToken) {
-                alert('ログインが必要です。\\nPlease login to save your draft.');
+                showToast('ログインが必要です。 / Please login to save your draft.', 'warning');
                 return;
             }
             
@@ -1746,13 +1873,13 @@ function getHTMLPage(): string {
                 });
                 
                 if (response.ok) {
-                    alert('下書きを保存しました。\\nDraft saved successfully.');
+                    showToast('下書きを保存しました。 / Draft saved successfully.', 'success');
                 } else {
                     throw new Error('Failed to save draft');
                 }
             } catch (error) {
                 console.error('Save draft failed:', error);
-                alert('下書きの保存に失敗しました。\\nFailed to save draft.');
+                showToast('下書きの保存に失敗しました。 / Failed to save draft.', 'error');
             }
         }
         
@@ -1816,12 +1943,13 @@ function getHTMLPage(): string {
                         showUserInfo(currentUser);
                         enableSaveButton();
                         await loadDraft();
+                        showToast('ログインしました。 / Logged in successfully.', 'success');
                     } else {
                         throw new Error('Authentication failed');
                     }
                 } catch (error) {
                     console.error('OAuth callback failed:', error);
-                    alert('認証に失敗しました。もう一度お試しください。\\nAuthentication failed. Please try again.');
+                    showToast('認証に失敗しました。もう一度お試しください。 / Authentication failed. Please try again.', 'error');
                 }
             }
         }
@@ -2028,8 +2156,19 @@ export default {
       // Store state in KV with 10 minute expiration
       await env.USERS_KV.put(`oauth_state:${state}`, Date.now().toString(), { expirationTtl: 600 });
       
-      // Note: You need to set up Google OAuth credentials and add the client ID here
-      const clientId = 'YOUR_GOOGLE_CLIENT_ID'; // This should be configured as an environment variable
+      // Get Google Client ID from environment
+      const clientId = env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+      
+      // Warning: Check if client ID is configured
+      if (clientId === 'YOUR_GOOGLE_CLIENT_ID') {
+        return new Response(JSON.stringify({ 
+          error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID environment variable.' 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
       const redirectUri = `${url.origin}/api/auth/google/callback`;
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${encodeURIComponent(clientId)}&` +
