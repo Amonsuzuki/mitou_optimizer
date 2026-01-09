@@ -1390,8 +1390,13 @@ function getHTMLPage(): string {
             // Get section title
             const sectionTitle = data.sectionTitles.find(s => s.id === sectionNum);
             
+            if (!sectionTitle) {
+                alert('セクション情報が見つかりませんでした。');
+                return;
+            }
+            
             // Build content HTML
-            let contentHTML = '<h2>' + sectionTitle.title + '</h2>';
+            let contentHTML = '<h2>' + escapeHtml(sectionTitle.title) + '</h2>';
             
             // Add all projects' content for this section
             data.projects.forEach(project => {
@@ -1399,12 +1404,12 @@ function getHTMLPage(): string {
                 
                 if (sectionText && sectionText.trim().length > 0) {
                     contentHTML += '<div class="project-section">';
-                    contentHTML += '<h3>' + project.name + ' (' + project.category + ')</h3>';
+                    contentHTML += '<h3>' + escapeHtml(project.name) + ' (' + escapeHtml(project.category) + ')</h3>';
                     contentHTML += '<div class="section-text">' + escapeHtml(sectionText) + '</div>';
                     contentHTML += '</div>';
                 } else {
                     contentHTML += '<div class="project-section">';
-                    contentHTML += '<h3>' + project.name + ' (' + project.category + ')</h3>';
+                    contentHTML += '<h3>' + escapeHtml(project.name) + ' (' + escapeHtml(project.category) + ')</h3>';
                     contentHTML += '<div class="section-text no-content">このセクションの内容が抽出できませんでした。<br>Content not available for this section.</div>';
                     contentHTML += '</div>';
                 }
