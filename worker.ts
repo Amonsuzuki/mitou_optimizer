@@ -723,6 +723,11 @@ function getHTMLPage(): string {
     </div>
     
     <script>
+        // Constants
+        const VALIDATION_ERROR_MSG = '必須項目を入力してください。';
+        const PDF_INSTRUCTION_MSG = 'PDF生成機能：\\n\\nLaTeXファイルをダウンロードした後、以下のいずれかの方法でPDFに変換してください：\\n\\n1. Overleaf (https://www.overleaf.com/) にアップロードして自動コンパイル\\n2. ローカルのLaTeX環境で "platex" コマンドを使用\\n3. Cloud LaTeX などのオンラインサービスを利用\\n\\n最も簡単な方法はOverleafの利用です。まずLaTeXファイルをダウンロードしてください。';
+        const PREVIEW_COMING_SOON_MSG = 'プレビュー機能は開発中です。現在はLaTeXファイルをダウンロードして、Overleafなどのサービスでプレビューしてください。';
+        
         // Tab switching
         document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.addEventListener('click', function() {
@@ -760,7 +765,7 @@ function getHTMLPage(): string {
         async function downloadLatex() {
             const form = document.getElementById('applicationForm');
             if (!form.checkValidity()) {
-                alert('必須項目を入力してください。');
+                alert(VALIDATION_ERROR_MSG);
                 form.reportValidity();
                 return;
             }
@@ -817,12 +822,12 @@ function getHTMLPage(): string {
         async function downloadPDF() {
             const form = document.getElementById('applicationForm');
             if (!form.checkValidity()) {
-                alert('必須項目を入力してください。');
+                alert(VALIDATION_ERROR_MSG);
                 form.reportValidity();
                 return;
             }
             
-            alert('PDF生成機能：\\n\\nLaTeXファイルをダウンロードした後、以下のいずれかの方法でPDFに変換してください：\\n\\n1. Overleaf (https://www.overleaf.com/) にアップロードして自動コンパイル\\n2. ローカルのLaTeX環境で "platex" コマンドを使用\\n3. Cloud LaTeX などのオンラインサービスを利用\\n\\n最も簡単な方法はOverleafの利用です。まずLaTeXファイルをダウンロードしてください。');
+            alert(PDF_INSTRUCTION_MSG);
             
             // Also trigger LaTeX download
             await downloadLatex();
@@ -830,7 +835,7 @@ function getHTMLPage(): string {
         
         // Preview
         function previewDocument() {
-            alert('プレビュー機能は開発中です。現在はLaTeXファイルをダウンロードして、Overleafなどのサービスでプレビューしてください。');
+            alert(PREVIEW_COMING_SOON_MSG);
         }
         
         // Auto-save to localStorage
