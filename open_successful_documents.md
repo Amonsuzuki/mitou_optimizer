@@ -1,4 +1,3 @@
-- https://github.com/virtualsecureplatform/MitouDocument
 - https://github.com/horizon2038/mitou-documentation/tree/main
 - https://github.com/virtualsecureplatform/MitouDocument
 - https://git.matsuuratomoya.com/tomoyanonymous/mitou2019_matsuura_application
