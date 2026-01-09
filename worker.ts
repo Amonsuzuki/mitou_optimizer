@@ -773,19 +773,19 @@ function getHTMLPage(): string {
         const translations = {
             ja: {
                 // Nav tabs
-                navKnowledge: "General knowledge to pass MITOU",
-                navEditing: "Editing page",
-                navExamples: "Successful applicants' examples",
+                navKnowledge: "未踏合格のための一般知識",
+                navEditing: "編集ページ",
+                navExamples: "合格者の申請書例",
                 
                 // Action bar
-                aiReview: "AI review",
+                aiReview: "AIレビュー",
                 aiOn: "ON",
                 aiOff: "OFF",
-                save: "Save",
-                preview: "Preview",
-                downloadLatex: "Download LaTeX",
-                downloadPDF: "Download PDF",
-                loginRequired: "Login required",
+                save: "保存",
+                preview: "プレビュー",
+                downloadLatex: "LaTeXダウンロード",
+                downloadPDF: "PDFダウンロード",
+                loginRequired: "ログインが必要です",
                 
                 // Knowledge tab
                 knowledgeTitle: "未踏IT人材発掘・育成事業について",
