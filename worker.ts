@@ -522,18 +522,18 @@ function getHTMLPage(): string {
 <body>
     <div class="top-bar">
         <div class="nav-tabs">
-            <button class="nav-tab" data-tab="knowledge">General knowledges to pass MITOU</button>
+            <button class="nav-tab" data-tab="knowledge">General knowledge to pass MITOU</button>
             <button class="nav-tab active" data-tab="editing">Editing page</button>
             <button class="nav-tab" data-tab="examples">Successful applicants' examples</button>
         </div>
         <div class="action-bar">
             <button class="toggle-btn" id="aiReviewToggle" onclick="toggleAIReview()">
-                AI review: <span id="aiReviewStatus">OFF</span>
+                <span id="aiReviewLabel">AI review</span>: <span id="aiReviewStatus">OFF</span>
             </button>
             <button class="action-btn disabled" id="saveBtn" title="Login required">Save</button>
-            <button class="action-btn" onclick="previewDocument()">Preview</button>
-            <button class="action-btn primary" onclick="downloadLatex()">Download LaTeX</button>
-            <button class="action-btn primary" onclick="downloadPDF()">Download PDF</button>
+            <button class="action-btn" id="previewBtn" onclick="previewDocument()">Preview</button>
+            <button class="action-btn primary" id="downloadLatexBtn" onclick="downloadLatex()">Download LaTeX</button>
+            <button class="action-btn primary" id="downloadPdfBtn" onclick="downloadPDF()">Download PDF</button>
             <div class="language-selector">
                 <button class="lang-btn" onclick="switchLanguage('ja')" id="langJa">日本語</button>
                 <button class="lang-btn" onclick="switchLanguage('en')" id="langEn">English</button>
@@ -773,7 +773,7 @@ function getHTMLPage(): string {
         const translations = {
             ja: {
                 // Nav tabs
-                navKnowledge: "General knowledges to pass MITOU",
+                navKnowledge: "General knowledge to pass MITOU",
                 navEditing: "Editing page",
                 navExamples: "Successful applicants' examples",
                 
@@ -911,7 +911,7 @@ function getHTMLPage(): string {
             },
             en: {
                 // Nav tabs
-                navKnowledge: "General knowledges to pass MITOU",
+                navKnowledge: "General knowledge to pass MITOU",
                 navEditing: "Editing page",
                 navExamples: "Successful applicants' examples",
                 
@@ -1075,13 +1075,12 @@ function getHTMLPage(): string {
             document.querySelectorAll('.nav-tab')[2].textContent = t.navExamples;
             
             // Action bar
-            const aiReviewToggle = document.getElementById('aiReviewToggle');
-            aiReviewToggle.childNodes[0].textContent = t.aiReview + ': ';
+            document.getElementById('aiReviewLabel').textContent = t.aiReview;
             document.getElementById('saveBtn').textContent = t.save;
             document.getElementById('saveBtn').title = t.loginRequired;
-            document.querySelectorAll('.action-btn')[1].textContent = t.preview;
-            document.querySelectorAll('.action-btn')[2].textContent = t.downloadLatex;
-            document.querySelectorAll('.action-btn')[3].textContent = t.downloadPDF;
+            document.getElementById('previewBtn').textContent = t.preview;
+            document.getElementById('downloadLatexBtn').textContent = t.downloadLatex;
+            document.getElementById('downloadPdfBtn').textContent = t.downloadPDF;
             
             // Knowledge tab
             const knowledgeTab = document.getElementById('knowledge');
