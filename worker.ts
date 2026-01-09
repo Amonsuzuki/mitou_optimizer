@@ -5,6 +5,37 @@
  * MITOU IT project application documents in LaTeX/PDF format.
  */
 
+// Cloudflare environment bindings
+interface Env {
+  USERS_KV: KVNamespace;
+  MEMORIES_KV: KVNamespace;
+}
+
+// User account structure
+interface User {
+  username: string;
+  passwordHash: string;
+  email: string;
+  createdAt: string;
+}
+
+// Memory/document structure for storing application data
+interface Memory {
+  userId: string;
+  memoryId: string;
+  sectionData: SectionData;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Session structure
+interface Session {
+  userId: string;
+  username: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
 interface SectionData {
   projectName: string;  // プロジェクト名
   applicantName: string;  // 申請者名
@@ -491,6 +522,101 @@ function getHTMLPage(): string {
             text-decoration: underline;
         }
         
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-content h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: none;
+        }
+        
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .modal-content button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .modal-content .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .modal-content .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .modal-content .btn-secondary {
+            background: #f5f5f5;
+            color: #666;
+        }
+        
+        .modal-content .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .modal-content .link-btn {
+            background: none;
+            color: #667eea;
+            text-decoration: underline;
+            padding: 5px;
+            margin-top: 5px;
+        }
+        
+        .user-info {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 0 10px;
+        }
+        
+        .user-info.active {
+            display: flex;
+        }
+        
+        .user-info span {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -530,7 +656,12 @@ function getHTMLPage(): string {
             <button class="toggle-btn" id="aiReviewToggle" onclick="toggleAIReview()">
                 <span id="aiReviewLabel">AI review</span>: <span id="aiReviewStatus">OFF</span>
             </button>
-            <button class="action-btn disabled" id="saveBtn" title="Login required">Save</button>
+            <button class="action-btn" id="loginBtn" onclick="showLoginModal()">Login</button>
+            <div class="user-info" id="userInfo">
+                <span id="usernameDisplay"></span>
+                <button class="action-btn" id="logoutBtn" onclick="logout()">Logout</button>
+            </div>
+            <button class="action-btn disabled" id="saveBtn" onclick="saveMemory()" title="Login required">Save</button>
             <button class="action-btn" id="previewBtn" onclick="previewDocument()">Preview</button>
             <button class="action-btn primary" id="downloadLatexBtn" onclick="downloadLatex()">Download LaTeX</button>
             <button class="action-btn primary" id="downloadPdfBtn" onclick="downloadPDF()">Download PDF</button>
@@ -765,6 +896,32 @@ function getHTMLPage(): string {
                     <li>ただし、丸写しは避け、自分の言葉で書くこと</li>
                 </ul>
             </div>
+        </div>
+    </div>
+    
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <h2>Login</h2>
+            <input type="text" id="loginUsername" placeholder="Username" />
+            <input type="password" id="loginPassword" placeholder="Password" />
+            <button class="btn-primary" onclick="login()">Login</button>
+            <button class="link-btn" onclick="showRegisterModal()">Don't have an account? Register</button>
+            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+    
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content">
+            <h2>Register</h2>
+            <input type="text" id="registerUsername" placeholder="Username" />
+            <input type="email" id="registerEmail" placeholder="Email" />
+            <input type="password" id="registerPassword" placeholder="Password" />
+            <input type="password" id="registerPasswordConfirm" placeholder="Confirm Password" />
+            <button class="btn-primary" onclick="register()">Register</button>
+            <button class="link-btn" onclick="showLoginModal()">Already have an account? Login</button>
+            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
         </div>
     </div>
     
@@ -1342,6 +1499,175 @@ function getHTMLPage(): string {
             alert(window.PREVIEW_COMING_SOON_MSG);
         }
         
+        // Authentication functions
+        let authToken = localStorage.getItem('authToken');
+        let currentUsername = localStorage.getItem('username');
+        
+        // Check authentication on page load
+        function checkAuth() {
+            if (authToken && currentUsername) {
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('userInfo').classList.add('active');
+                document.getElementById('usernameDisplay').textContent = currentUsername;
+                document.getElementById('saveBtn').classList.remove('disabled');
+                document.getElementById('saveBtn').title = 'Save to cloud';
+            } else {
+                document.getElementById('loginBtn').style.display = 'block';
+                document.getElementById('userInfo').classList.remove('active');
+                document.getElementById('saveBtn').classList.add('disabled');
+                document.getElementById('saveBtn').title = 'Login required';
+            }
+        }
+        
+        // Show/hide modals
+        function showLoginModal() {
+            closeModal();
+            document.getElementById('loginModal').classList.add('active');
+        }
+        
+        function showRegisterModal() {
+            closeModal();
+            document.getElementById('registerModal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('loginModal').classList.remove('active');
+            document.getElementById('registerModal').classList.remove('active');
+        }
+        
+        // Register
+        async function register() {
+            const username = document.getElementById('registerUsername').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+            
+            if (!username || !email || !password) {
+                alert('All fields are required');
+                return;
+            }
+            
+            if (password !== passwordConfirm) {
+                alert('Passwords do not match');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Registration successful! Please login.');
+                    showLoginModal();
+                } else {
+                    alert(data.error || 'Registration failed');
+                }
+            } catch (err) {
+                alert('Registration failed: ' + err.message);
+            }
+        }
+        
+        // Login
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!username || !password) {
+                alert('Username and password are required');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    currentUsername = data.username;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('username', currentUsername);
+                    closeModal();
+                    checkAuth();
+                    alert('Login successful!');
+                } else {
+                    alert(data.error || 'Login failed');
+                }
+            } catch (err) {
+                alert('Login failed: ' + err.message);
+            }
+        }
+        
+        // Logout
+        async function logout() {
+            try {
+                await fetch('/api/logout', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': 'Bearer ' + authToken 
+                    }
+                });
+            } catch (err) {
+                console.error('Logout error:', err);
+            }
+            
+            authToken = null;
+            currentUsername = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('username');
+            checkAuth();
+            alert('Logged out successfully');
+        }
+        
+        // Save memory to cloud
+        async function saveMemory() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+            
+            const form = document.getElementById('applicationForm');
+            const formData = new FormData(form);
+            const data = {};
+            
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            
+            try {
+                const response = await fetch('/api/memory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Saved successfully to cloud!');
+                } else {
+                    alert(result.error || 'Failed to save');
+                }
+            } catch (err) {
+                alert('Failed to save: ' + err.message);
+            }
+        }
+        
+        // Check auth on page load
+        checkAuth();
+        
         // Auto-save to localStorage
         const inputs = document.querySelectorAll('input, textarea');
         inputs.forEach(input => {
@@ -1362,11 +1688,337 @@ function getHTMLPage(): string {
 }
 
 /**
+ * Hash a password using SHA-256
+ * Note: For production, consider using a more secure method like bcrypt
+ * However, Cloudflare Workers has limited crypto APIs
+ */
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+/**
+ * Generate a random session token
+ */
+function generateSessionToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Verify session token and return user info
+ */
+async function verifySession(token: string, env: Env): Promise<Session | null> {
+  if (!token) return null;
+  
+  const sessionData = await env.USERS_KV.get(`session:${token}`);
+  if (!sessionData) return null;
+  
+  const session: Session = JSON.parse(sessionData);
+  
+  // Check if session has expired
+  if (new Date(session.expiresAt) < new Date()) {
+    await env.USERS_KV.delete(`session:${token}`);
+    return null;
+  }
+  
+  return session;
+}
+
+/**
+ * Extract session token from request headers
+ */
+function getSessionToken(request: Request): string | null {
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  return null;
+}
+
+/**
  * Main request handler
  */
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    
+    // CORS headers for API requests
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
+    
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+    
+    // API: Register new account
+    if (url.pathname === '/api/register' && request.method === 'POST') {
+      try {
+        const { username, password, email } = await request.json() as any;
+        
+        // Validate input
+        if (!username || !password || !email) {
+          return new Response(JSON.stringify({ error: 'Username, password, and email are required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Check if user already exists
+        const existingUser = await env.USERS_KV.get(`user:${username}`);
+        if (existingUser) {
+          return new Response(JSON.stringify({ error: 'Username already exists' }), {
+            status: 409,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Create new user
+        const passwordHash = await hashPassword(password);
+        const user: User = {
+          username,
+          passwordHash,
+          email,
+          createdAt: new Date().toISOString()
+        };
+        
+        await env.USERS_KV.put(`user:${username}`, JSON.stringify(user));
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'Account created successfully',
+          username 
+        }), {
+          status: 201,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // API: Login
+    if (url.pathname === '/api/login' && request.method === 'POST') {
+      try {
+        const { username, password } = await request.json() as any;
+        
+        if (!username || !password) {
+          return new Response(JSON.stringify({ error: 'Username and password are required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Get user
+        const userData = await env.USERS_KV.get(`user:${username}`);
+        if (!userData) {
+          return new Response(JSON.stringify({ error: 'Invalid username or password' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const user: User = JSON.parse(userData);
+        const passwordHash = await hashPassword(password);
+        
+        if (passwordHash !== user.passwordHash) {
+          return new Response(JSON.stringify({ error: 'Invalid username or password' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Create session
+        const sessionToken = generateSessionToken();
+        const session: Session = {
+          userId: username,
+          username: username,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+        };
+        
+        await env.USERS_KV.put(`session:${sessionToken}`, JSON.stringify(session), {
+          expirationTtl: 7 * 24 * 60 * 60 // 7 days in seconds
+        });
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          token: sessionToken,
+          username
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // API: Save memory (requires authentication)
+    if (url.pathname === '/api/memory' && request.method === 'POST') {
+      try {
+        const token = getSessionToken(request);
+        const session = await verifySession(token || '', env);
+        
+        if (!session) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const data = await request.json() as any;
+        const sectionData: SectionData = {
+          projectName: data.projectName || '',
+          applicantName: data.applicantName || '',
+          section1_1: data.section1_1 || '',
+          section1_2_1: data.section1_2_1 || '',
+          section1_2_2: data.section1_2_2 || '',
+          section1_2_3: data.section1_2_3 || '',
+          section1_3: data.section1_3 || '',
+          section1_4: data.section1_4 || '',
+          section2_1: data.section2_1 || '',
+          section2_2: data.section2_2 || '',
+          section3: data.section3 || '',
+          section4_1_1: data.section4_1_1 || '',
+          section4_1_2: data.section4_1_2 || '',
+          section4_1_3: data.section4_1_3 || '',
+          section4_2: data.section4_2 || '',
+          section4_3: data.section4_3 || '',
+          section4_4_1: data.section4_4_1 || '',
+          section4_4_2: data.section4_4_2 || '',
+          section5: data.section5 || '',
+          section6: data.section6 || '',
+          section7: data.section7 || '',
+          section8: data.section8 || ''
+        };
+        
+        const memoryId = data.memoryId || generateSessionToken();
+        const now = new Date().toISOString();
+        
+        const memory: Memory = {
+          userId: session.userId,
+          memoryId,
+          sectionData,
+          createdAt: data.createdAt || now,
+          updatedAt: now
+        };
+        
+        // Store memory
+        await env.MEMORIES_KV.put(`memory:${session.userId}:${memoryId}`, JSON.stringify(memory));
+        
+        // Also maintain a list of memory IDs for this user
+        const memoryListKey = `memorylist:${session.userId}`;
+        const memoryListData = await env.MEMORIES_KV.get(memoryListKey);
+        let memoryList: string[] = memoryListData ? JSON.parse(memoryListData) : [];
+        
+        if (!memoryList.includes(memoryId)) {
+          memoryList.push(memoryId);
+          await env.MEMORIES_KV.put(memoryListKey, JSON.stringify(memoryList));
+        }
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          memoryId,
+          message: 'Memory saved successfully'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Failed to save memory' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // API: Get memories (requires authentication)
+    if (url.pathname === '/api/memory' && request.method === 'GET') {
+      try {
+        const token = getSessionToken(request);
+        const session = await verifySession(token || '', env);
+        
+        if (!session) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Get specific memory or all memories
+        const memoryId = url.searchParams.get('memoryId');
+        
+        if (memoryId) {
+          // Get specific memory
+          const memoryData = await env.MEMORIES_KV.get(`memory:${session.userId}:${memoryId}`);
+          if (!memoryData) {
+            return new Response(JSON.stringify({ error: 'Memory not found' }), {
+              status: 404,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+          
+          return new Response(memoryData, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } else {
+          // Get all memories for user
+          const memoryListKey = `memorylist:${session.userId}`;
+          const memoryListData = await env.MEMORIES_KV.get(memoryListKey);
+          const memoryList: string[] = memoryListData ? JSON.parse(memoryListData) : [];
+          
+          const memories: Memory[] = [];
+          for (const id of memoryList) {
+            const memoryData = await env.MEMORIES_KV.get(`memory:${session.userId}:${id}`);
+            if (memoryData) {
+              memories.push(JSON.parse(memoryData));
+            }
+          }
+          
+          return new Response(JSON.stringify({ memories }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Failed to retrieve memories' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // API: Logout
+    if (url.pathname === '/api/logout' && request.method === 'POST') {
+      try {
+        const token = getSessionToken(request);
+        if (token) {
+          await env.USERS_KV.delete(`session:${token}`);
+        }
+        
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: 'Failed to logout' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
     
     // Handle POST request to generate LaTeX
     if (url.pathname === '/generate' && request.method === 'POST') {
