@@ -1129,6 +1129,7 @@ function getHTMLPage(): string {
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
             const daysLeftElement = document.getElementById('daysLeft');
+            if (!daysLeftElement) return;
             
             if (diffDays > 0) {
                 daysLeftElement.textContent = diffDays + t.daysLeftSuffix;
@@ -1161,7 +1162,10 @@ function getHTMLPage(): string {
             document.querySelectorAll('.nav-tab')[2].textContent = t.navExamples;
             
             // Update deadline label
-            document.querySelector('.deadline-label').textContent = t.deadlineLabel;
+            const deadlineLabel = document.querySelector('.deadline-label');
+            if (deadlineLabel) {
+                deadlineLabel.textContent = t.deadlineLabel;
+            }
             
             // Update days left
             updateDaysLeft();
