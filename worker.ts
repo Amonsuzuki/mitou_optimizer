@@ -660,6 +660,40 @@ function getHTMLPage(submissionDeadline: string): string {
             line-height: 1;
         }
         
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-box h3 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .info-box p {
+            color: #333;
+            line-height: 1.8;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .info-box ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .info-box li {
+            color: #333;
+            line-height: 1.8;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
         .form-group {
             margin-bottom: 25px;
         }
@@ -1182,6 +1216,28 @@ function getHTMLPage(submissionDeadline: string): string {
                     <li><strong>特典：</strong>プロジェクトマネージャー（PM）による指導、開発環境の提供</li>
                 </ul>
             </div>
+            
+            <div class="info-box">
+                <h3>審査のポイント</h3>
+                <ul>
+                    <li><strong>独創性：</strong>既存のものとは異なる新しいアイデアか？</li>
+                    <li><strong>技術力：</strong>実現するための技術力を持っているか？</li>
+                    <li><strong>実現可能性：</strong>期間内に完成できるか？</li>
+                    <li><strong>社会的価値：</strong>社会に価値を提供できるか？</li>
+                    <li><strong>情熱：</strong>プロジェクトへの情熱が伝わるか？</li>
+                </ul>
+            </div>
+            
+            <div class="info-box">
+                <h3>申請書作成のコツ</h3>
+                <ul>
+                    <li>具体的に書く：抽象的な表現ではなく、具体的な技術や数字を示す</li>
+                    <li>背景を明確に：なぜこのプロジェクトが必要なのかを丁寧に説明する</li>
+                    <li>実績を示す：過去の作品やGitHubリポジトリで技術力を証明する</li>
+                    <li>計画を詳細に：開発スケジュールや予算の使い道を明確に示す</li>
+                    <li>情熱を伝える：なぜこのプロジェクトをやりたいのか、熱意を表現する</li>
+                </ul>
+            </div>
         </div>
         
         <!-- Editing Tab -->
@@ -1440,6 +1496,25 @@ function getHTMLPage(submissionDeadline: string): string {
                 periodText: "約9ヶ月",
                 benefits: "特典：",
                 benefitsText: "プロジェクトマネージャー（PM）による指導、開発環境の提供",
+                
+                screeningTitle: "審査のポイント",
+                originality: "独創性：",
+                originalityText: "既存のものとは異なる新しいアイデアか？",
+                technicalSkill: "技術力：",
+                technicalSkillText: "実現するための技術力を持っているか？",
+                feasibility: "実現可能性：",
+                feasibilityText: "期間内に完成できるか？",
+                socialValue: "社会的価値：",
+                socialValueText: "社会に価値を提供できるか？",
+                passion: "情熱：",
+                passionText: "プロジェクトへの情熱が伝わるか？",
+                
+                tipsTitle: "申請書作成のコツ",
+                tipsBeSpecific: "具体的に書く：抽象的な表現ではなく、具体的な技術や数字を示す",
+                tipsClarifyBackground: "背景を明確に：なぜこのプロジェクトが必要なのかを丁寧に説明する",
+                tipsShowEvidence: "実績を示す：過去の作品やGitHubリポジトリで技術力を証明する",
+                tipsDetailPlan: "計画を詳細に：開発スケジュールや予算の使い道を明確に示す",
+                tipsShowPassion: "情熱を伝える：なぜこのプロジェクトをやりたいのか、熱意を表現する",
                 
                 // Editing tab
                 editingTitle: "未踏IT人材発掘・育成事業",
