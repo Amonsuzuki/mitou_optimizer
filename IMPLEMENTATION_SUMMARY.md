@@ -1,8 +1,51 @@
-# Implementation Summary: Supabase Authentication Integration
+# Implementation Summary: Supabase Integration
 
 ## Overview
 
-This document summarizes the implementation of Google OAuth authentication using Supabase for the MITOU Optimizer application.
+This document summarizes the implementation of Google OAuth authentication and draft data storage using Supabase for the MITOU Optimizer application.
+
+## Latest Update: Draft Storage Migration
+
+### What Changed (January 2026)
+
+**Draft storage has been migrated from Cloudflare KV to Supabase PostgreSQL database.**
+
+#### Before
+- Draft data stored in `MEMORIES_KV` (Cloudflare KV namespace)
+- Key format: `draft:${user.id}`
+- Simple key-value storage
+
+#### After
+- Draft data stored in `drafts` table (Supabase PostgreSQL)
+- Proper database schema with RLS policies
+- Better data integrity and querying capabilities
+
+#### Files Updated
+- `worker.ts` - Modified `/api/drafts/save` and `/api/drafts/load` endpoints
+- `README.md` - Updated storage section
+- `SUPABASE_SETUP.md` - Added database setup instructions
+
+#### Files Created
+- `supabase-schema.sql` - Database schema for DRAFTS table
+- `MIGRATION_GUIDE.md` - Comprehensive migration guide
+- Updated `IMPLEMENTATION_SUMMARY.md` - This file
+
+### Benefits
+1. **Data Integrity**: PostgreSQL ACID compliance
+2. **Security**: Row Level Security (RLS) policies
+3. **Scalability**: Better structured data handling
+4. **Unified Storage**: All user data in Supabase
+5. **Automatic Backups**: Handled by Supabase
+
+### Migration Impact
+- **New Users**: No impact - will automatically use Supabase
+- **Existing Users**: Old KV data remains but is not accessed
+  - Users need to re-enter draft data OR
+  - Manual migration can be performed (see `MIGRATION_GUIDE.md`)
+
+---
+
+## Original Implementation: Supabase Authentication
 
 ## What Was Implemented
 
