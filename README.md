@@ -73,8 +73,37 @@ npm run deploy
 
 Configure these in Cloudflare Workers dashboard or `.dev.vars` file:
 
-- `GOOGLE_CLIENT_ID` - Google OAuth client ID (optional, for user authentication)
-- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret (optional, for user authentication)
+- `SUPABASE_URL` - Supabase project URL (required for authentication)
+- `SUPABASE_SECRET_KEY` - Supabase service_role key (required for authentication, NOT the anon key)
+
+### Setting up Supabase Authentication
+
+1. **Create a Supabase Project**
+   - Go to https://supabase.com/ and create a new project
+   - Note down your Project URL and service_role key from Project Settings > API
+
+2. **Configure Google OAuth in Google Cloud Console**
+   - Go to https://console.cloud.google.com/
+   - Create a new project or select existing one
+   - Enable the Google OAuth consent screen
+   - Create OAuth 2.0 Client ID credentials
+   - Add authorized redirect URI: `https://your-project-ref.supabase.co/auth/v1/callback`
+   - Note down the Client ID and Client Secret
+
+3. **Configure Google Provider in Supabase**
+   - In Supabase Dashboard, go to Authentication > Providers
+   - Enable Google provider
+   - Enter your Google OAuth Client ID and Client Secret
+   - Save the configuration
+
+4. **Configure Redirect URLs in Supabase**
+   - In Supabase Dashboard, go to Authentication > URL Configuration
+   - Add your application URL to Site URL (e.g., `http://localhost:8787` for development)
+   - Add callback URL to Redirect URLs (e.g., `http://localhost:8787/auth/callback`)
+
+5. **Set Environment Variables**
+   - For local development, create a `.dev.vars` file (copy from `.dev.vars.example`)
+   - For production, set these in Cloudflare Workers dashboard under Settings > Variables
 
 ## KV Namespaces
 

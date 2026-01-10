@@ -1,12 +1,10 @@
-# Google OAuth Configuration
-# Get these credentials from Google Cloud Console:
-# 1. Go to https://console.cloud.google.com/
+# Supabase Configuration
+# Get these credentials from your Supabase project:
+# 1. Go to https://supabase.com/
 # 2. Create a new project or select an existing one
-# 3. Enable the Google+ API
-# 4. Go to "Credentials" and create OAuth 2.0 Client ID
-# 5. Set authorized redirect URIs to: http://localhost:8787/api/auth/google/callback (for dev)
-#    and your production URL: https://your-domain.com/api/auth/google/callback
-# 6. Copy the Client ID and Client Secret below
+# 3. Go to Project Settings > API
+# 4. Copy the Project URL and service_role key (NOT the anon key)
+# Note: The service_role key should be kept secret and only used on the server
 
-GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-client-secret-here
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SECRET_KEY=your-service-role-secret-key-here
