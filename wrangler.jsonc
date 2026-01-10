@@ -16,4 +16,7 @@
 			"id": "96860aba3bac4f4192395bcf53e4be4f"
 		}
 	]
+	// Note: Environment variables SUPABASE_URL and SUPABASE_SECRET_KEY
+	// should be set in Cloudflare Workers dashboard under Settings > Variables
+	// For local development, add them to .dev.vars file
 }
