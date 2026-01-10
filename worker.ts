@@ -756,29 +756,6 @@ function getHTMLPage(submissionDeadline: string): string {
             color: #c62828;
         }
         
-        .example-card {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 2px solid #e0e0e0;
-        }
-        
-        .example-card h3 {
-            margin-top: 0;
-            color: #667eea;
-        }
-        
-        .example-card a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .example-card a:hover {
-            text-decoration: underline;
-        }
-        
         .section-buttons {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1338,13 +1315,6 @@ function getHTMLPage(submissionDeadline: string): string {
             
             <div id="sectionContent" class="section-content">
                 <p class="section-placeholder">上のボタンをクリックして、各セクションの内容を表示してください。<br>Click a button above to view the content of each section.</p>
-            </div>
-            
-            <div class="example-card">
-                <h3>PDFファイル / PDF Files</h3>
-                <p>完全な申請書のPDFファイルはこちらからアクセスできます。<br>Complete application PDF files can be accessed here:</p>
-                <p><a href="/wada_未踏一次審査資料.pdf" target="_blank">📄 和田さん (Wada-san)</a></p>
-                <p><a href="/水野竣介_提案プロジェクト詳細資料.pdf" target="_blank">📄 水野さん (Mizuno-san)</a></p>
             </div>
             
             <div class="info-box">
@@ -2381,12 +2351,12 @@ export default {
       await env.USERS_KV.put(`oauth_state:${state}`, Date.now().toString(), { expirationTtl: 600 });
       
       // Get Google Client ID from environment
-      const clientId = env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+      const clientId = env.GOOGLE_CLIENT_ID;
       
-      // Warning: Check if client ID is configured
-      if (clientId === 'YOUR_GOOGLE_CLIENT_ID') {
+      // Check if client ID is configured
+      if (!clientId) {
         return new Response(JSON.stringify({ 
-          error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID environment variable.' 
+          error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.' 
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -2421,35 +2391,94 @@ export default {
         }
         await env.USERS_KV.delete(`oauth_state:${state}`);
         
-        // TODO: Complete Google OAuth implementation
-        // To fully implement Google OAuth, you need to:
-        // 1. Exchange the authorization code for an access token by calling:
-        //    POST https://oauth2.googleapis.com/token
-        //    with client_id, client_secret, code, redirect_uri, and grant_type=authorization_code
-        // 2. Use the access token to get user info from:
-        //    GET https://www.googleapis.com/oauth2/v2/userinfo
-        // 3. Store the user information in USERS_KV
-        //
-        // For now, this is a simplified mock implementation for demonstration purposes.
-        // Replace this section with actual Google API calls in production.
+        // Get credentials from environment
+        const clientId = env.GOOGLE_CLIENT_ID;
+        const clientSecret = env.GOOGLE_CLIENT_SECRET;
         
-        const mockUserInfo = {
-          id: 'google_' + Date.now(),
-          email: 'user@example.com',
-          name: 'User',
-          picture: ''
-        };
+        if (!clientId || !clientSecret) {
+          return new Response(JSON.stringify({ 
+            error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.' 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
         
-        // Create or update user
-        const user: User = {
-          id: mockUserInfo.id,
-          email: mockUserInfo.email,
-          name: mockUserInfo.name,
-          picture: mockUserInfo.picture,
-          createdAt: new Date().toISOString(),
-          lastLogin: new Date().toISOString()
-        };
+        // Exchange authorization code for access token
+        const redirectUri = `${url.origin}/api/auth/google/callback`;
+        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            code,
+            client_id: clientId,
+            client_secret: clientSecret,
+            redirect_uri: redirectUri,
+            grant_type: 'authorization_code',
+          }),
+        });
         
+        if (!tokenResponse.ok) {
+          const errorData = await tokenResponse.text();
+          console.error('Token exchange failed:', errorData);
+          return new Response(JSON.stringify({ error: 'Failed to exchange authorization code' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const tokenData = await tokenResponse.json() as any;
+        const accessToken = tokenData.access_token;
+        
+        // Get user info from Google
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+        
+        if (!userInfoResponse.ok) {
+          console.error('Failed to get user info');
+          return new Response(JSON.stringify({ error: 'Failed to get user information' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const userInfo = await userInfoResponse.json() as any;
+        
+        // Create user ID with google prefix
+        const userId = `google_${userInfo.id}`;
+        
+        // Check if user already exists
+        const existingUserData = await env.USERS_KV.get(`user:${userId}`);
+        let user: User;
+        
+        if (existingUserData) {
+          // Update existing user
+          const existingUser = JSON.parse(existingUserData) as User;
+          user = {
+            ...existingUser,
+            name: userInfo.name || existingUser.name,
+            email: userInfo.email || existingUser.email,
+            picture: userInfo.picture || existingUser.picture,
+            lastLogin: new Date().toISOString()
+          };
+        } else {
+          // Create new user
+          user = {
+            id: userId,
+            email: userInfo.email,
+            name: userInfo.name,
+            picture: userInfo.picture,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
+          };
+        }
+        
+        // Store user in KV
         await env.USERS_KV.put(`user:${user.id}`, JSON.stringify(user));
         
         // Create session
