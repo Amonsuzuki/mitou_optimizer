@@ -66,8 +66,32 @@ npm run deploy
 
 - **worker.ts** - Main Cloudflare Worker entry point
 - **generate-sections-data.js** - Script to generate TypeScript data from extracted sections
-- **extracted_sections/** - Directory containing text files extracted from PDF examples
+- **extract-text-sections.js** - Script to extract sections from text files in extracted_files directory
+- **extracted_files/** - Directory containing full text extracted from PDF examples
+- **extracted_sections/** - Directory containing text files extracted and split into sections
 - **extracted-sections-data.ts** - Generated TypeScript module (not in git)
+
+### Processing PDF Examples
+
+To process PDF examples and extract their sections:
+
+1. **Extract PDF to text** (if needed):
+   ```bash
+   node extract-pdf-to-text.js
+   ```
+   This reads PDFs from `examples/` and saves full text to `extracted_files/`.
+
+2. **Extract sections from text files**:
+   ```bash
+   node extract-text-sections.js
+   ```
+   This reads text files from `extracted_files/` and splits them into 8 sections, saving to `extracted_sections/`.
+   
+3. **Generate data file**:
+   ```bash
+   npm run generate-data
+   ```
+   This reads section files and generates `extracted-sections-data.ts` for the application.
 
 ## Environment Variables
 
