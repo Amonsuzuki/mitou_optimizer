@@ -2175,9 +2175,11 @@ function getHTMLPage(submissionDeadline: string): string {
             
             // Nav tabs in sidebar
             const navTabs = document.querySelectorAll('.nav-tab');
-            navTabs[0].textContent = t.navKnowledge;
-            navTabs[1].textContent = t.navEditing;
-            navTabs[2].textContent = t.navExamples;
+            if (navTabs.length >= 3) {
+                navTabs[0].textContent = t.navKnowledge;
+                navTabs[1].textContent = t.navEditing;
+                navTabs[2].textContent = t.navExamples;
+            }
             
             // Update deadline label
             const deadlineLabel = document.querySelector('.deadline-label');
