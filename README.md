@@ -94,6 +94,37 @@ The application uses two Cloudflare KV namespaces:
 - `USERS_KV` - Stores user data and sessions
 - `MEMORIES_KV` - Stores draft documents
 
+## Troubleshooting
+
+### "Google OAuth not configured" Error
+
+If you see this error when trying to log in:
+
+1. **Check environment variables**: Make sure you have created a `.dev.vars` file (for local development) or set the secrets in Cloudflare (for production)
+2. **Verify credentials**: Ensure your `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are correct
+3. **Check redirect URI**: Verify that the redirect URI in your Google Cloud Console matches your application URL
+4. **Restart the dev server**: After adding `.dev.vars`, restart your development server with `npm run dev`
+
+### OAuth Callback Errors
+
+If you're redirected back to the app but login fails:
+
+1. **Check redirect URI configuration**: The redirect URI must exactly match what's configured in Google Cloud Console
+2. **Verify client secret**: Make sure the `GOOGLE_CLIENT_SECRET` is correctly set
+3. **Check browser console**: Look for detailed error messages in the browser developer console
+4. **Review worker logs**: Use `wrangler tail` to see real-time logs from your Cloudflare Worker
+
+### Testing OAuth Flow
+
+To test the OAuth flow locally:
+
+1. Start the development server: `npm run dev`
+2. Open `http://localhost:8787` in your browser
+3. Click the "Login with Google" button
+4. You should be redirected to Google's login page
+5. After authorizing, you should be redirected back and logged in
+6. Your user info should appear in the top-right corner
+
 ## License
 
 MIT
