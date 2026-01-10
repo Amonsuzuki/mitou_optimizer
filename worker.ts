@@ -1525,7 +1525,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 // Alert messages
                 validationError: "必須項目を入力してください。",
-                pdfInstruction: "PDF生成機能：\\n\\nLaTeXファイルをダウンロードした後、以下のいずれかの方法でPDFに変換してください：\\n\\n1. Overleaf (https://www.overleaf.com/) にアップロードして自動コンパイル\\n2. ローカルのLaTeX環境で \\"platex\\" コマンドを使用\\n3. Cloud LaTeX などのオンラインサービスを利用\\n\\n最も簡単な方法はOverleafの利用です。まずLaTeXファイルをダウンロードしてください。",
+                pdfInstruction: "PDF生成機能：\\n\\nLaTeXファイルをダウンロードした後、以下のいずれかの方法でPDFに変換してください：\\n\\n1. Overleaf (https://www.overleaf.com/) にアップロードして自動コンパイル\\n2. ローカルのLaTeX環境で 'platex' コマンドを使用\\n3. Cloud LaTeX などのオンラインサービスを利用\\n\\n最も簡単な方法はOverleafの利用です。まずLaTeXファイルをダウンロードしてください。",
                 previewComingSoon: "プレビュー機能は開発中です。現在はLaTeXファイルをダウンロードして、Overleafなどのサービスでプレビューしてください。"
             },
             en: {
@@ -1669,7 +1669,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 // Alert messages
                 validationError: "Please fill in all required fields.",
-                pdfInstruction: "PDF Generation Feature:\\n\\nAfter downloading the LaTeX file, please convert it to PDF using one of the following methods:\\n\\n1. Upload to Overleaf (https://www.overleaf.com/) for automatic compilation\\n2. Use the \\\\"platex\\\\" command in your local LaTeX environment\\n3. Use online services like Cloud LaTeX\\n\\nThe easiest method is using Overleaf. First, please download the LaTeX file.",
+                pdfInstruction: "PDF Generation Feature:\\n\\nAfter downloading the LaTeX file, please convert it to PDF using one of the following methods:\\n\\n1. Upload to Overleaf (https://www.overleaf.com/) for automatic compilation\\n2. Use the 'platex' command in your local LaTeX environment\\n3. Use online services like Cloud LaTeX\\n\\nThe easiest method is using Overleaf. First, please download the LaTeX file.",
                 previewComingSoon: "The preview feature is under development. Currently, please download the LaTeX file and preview it using services like Overleaf."
             }
         };
