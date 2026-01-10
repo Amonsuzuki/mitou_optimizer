@@ -8,3 +8,9 @@
 
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SECRET_KEY=your-service-role-secret-key-here
+
+# OpenRouter Configuration
+# Get an API key from https://openrouter.ai/
+# This is used for the esquisse (thought process) AI feature
+
+OPENROUTER_API_KEY=your-openrouter-api-key-here
