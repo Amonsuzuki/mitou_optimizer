@@ -630,6 +630,7 @@ function getHTMLPage(submissionDeadline: string): string {
             margin-top: 20px;
             margin-bottom: 10px;
             font-size: 18px;
+            font-weight: 600;
         }
         
         .subtitle {
@@ -725,7 +726,7 @@ function getHTMLPage(submissionDeadline: string): string {
         .subsection-label {
             font-size: 14px;
             color: #555;
-            font-weight: 500;
+            font-weight: 600;
         }
         
         .section-number {
