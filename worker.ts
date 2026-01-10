@@ -1669,7 +1669,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 // Alert messages
                 validationError: "Please fill in all required fields.",
-                pdfInstruction: "PDF Generation Feature:\\n\\nAfter downloading the LaTeX file, please convert it to PDF using one of the following methods:\\n\\n1. Upload to Overleaf (https://www.overleaf.com/) for automatic compilation\\n2. Use the \\"platex\\" command in your local LaTeX environment\\n3. Use online services like Cloud LaTeX\\n\\nThe easiest method is using Overleaf. First, please download the LaTeX file.",
+                pdfInstruction: "PDF Generation Feature:\\n\\nAfter downloading the LaTeX file, please convert it to PDF using one of the following methods:\\n\\n1. Upload to Overleaf (https://www.overleaf.com/) for automatic compilation\\n2. Use the \\\\"platex\\\\" command in your local LaTeX environment\\n3. Use online services like Cloud LaTeX\\n\\nThe easiest method is using Overleaf. First, please download the LaTeX file.",
                 previewComingSoon: "The preview feature is under development. Currently, please download the LaTeX file and preview it using services like Overleaf."
             }
         };
@@ -1888,7 +1888,7 @@ function getHTMLPage(submissionDeadline: string): string {
             
             if (downloadContainer && downloadMenu) {
                 document.addEventListener('click', function(event) {
-                    const target = event.target as Node;
+                    const target = event.target;
                     if (target && !downloadContainer.contains(target)) {
                         downloadMenu.classList.remove('active');
                     }
