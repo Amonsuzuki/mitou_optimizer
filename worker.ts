@@ -2055,6 +2055,50 @@ function getHTMLPage(submissionDeadline: string): string {
                 console.error('Load draft failed:', error);
             }
         }
+
+        // Handle OAuth callback
+        async function handleOAuthCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            
+            if (code && state) {
+                try {
+                    const response = await fetch('/api/auth/google/callback', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ code, state })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        sessionToken = data.token;
+                        currentUser = data.user;
+                        localStorage.setItem('sessionToken', sessionToken);
+                        
+                        // Remove query parameters from URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        
+                        showUserInfo(currentUser);
+                        enableSaveButton();
+                        await loadDraft();
+                        showToast('ログインしました。 / Logged in successfully.', 'success');
+                    } else {
+                        throw new Error('Authentication failed');
+                    }
+                } catch (error) {
+                    console.error('OAuth callback failed:', error);
+                    showToast('認証に失敗しました。もう一度お試しください。 / Authentication failed. Please try again.', 'error');
+                }
+            }
+        }
+        
+        // Initialize authentication on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            handleOAuthCallback().then(() => checkAuth());
+        });
         
         // Section viewing functionality
         let sectionsData = null;
