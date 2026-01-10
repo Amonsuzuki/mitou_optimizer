@@ -2204,6 +2204,15 @@ function getHTMLPage(submissionDeadline: string): string {
             handleOAuthCallback().then(() => checkAuth());
         });
         
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            // Ctrl+S (or Cmd+S on Mac) to save
+            if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+                event.preventDefault(); // Prevent browser's default save behavior
+                saveDraft();
+            }
+        });
+        
         // Section viewing functionality
         let sectionsData = null;
         let currentSection = null;
