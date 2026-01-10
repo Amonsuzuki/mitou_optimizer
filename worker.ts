@@ -722,12 +722,13 @@ function getHTMLPage(submissionDeadline: string): string {
         }
         
         textarea {
-            min-height: 120px;
+            min-height: 60px;
             resize: vertical;
+            overflow-y: hidden;
         }
         
         textarea.small {
-            min-height: 80px;
+            min-height: 60px;
         }
         
         .subsection-group {
@@ -2242,6 +2243,10 @@ function getHTMLPage(submissionDeadline: string): string {
                                 field.value = draft.data[key];
                                 // Update localStorage as well
                                 localStorage.setItem(key, draft.data[key]);
+                                // Auto-resize if it's a textarea
+                                if (field.tagName === 'TEXTAREA') {
+                                    autoResizeTextarea(field);
+                                }
                             }
                         });
                         // Mark form as saved after loading
@@ -2479,7 +2484,15 @@ function getHTMLPage(submissionDeadline: string): string {
             alert(window.PREVIEW_COMING_SOON_MSG);
         }
         
-        // Auto-save to localStorage
+        // Auto-resize textarea function
+        function autoResizeTextarea(textarea) {
+            // Reset height to auto to get the correct scrollHeight
+            textarea.style.height = 'auto';
+            // Set the height to match the content
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+        
+        // Auto-save to localStorage and auto-resize textareas
         const inputs = document.querySelectorAll('input, textarea');
         inputs.forEach(input => {
             // Load saved value
@@ -2488,9 +2501,18 @@ function getHTMLPage(submissionDeadline: string): string {
                 input.value = saved;
             }
             
-            // Save on change
+            // Auto-resize textareas on load if they have content
+            if (input.tagName === 'TEXTAREA') {
+                autoResizeTextarea(input);
+            }
+            
+            // Save on change and auto-resize textareas
             input.addEventListener('input', function() {
                 localStorage.setItem(this.id, this.value);
+                
+                // Auto-resize if it's a textarea
+                if (this.tagName === 'TEXTAREA') {
+                    autoResizeTextarea(this);
                 // Mark form as modified when any input changes
                 if (isFormSaved) {
                     markFormAsModified();
