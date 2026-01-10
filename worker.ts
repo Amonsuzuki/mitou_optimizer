@@ -756,29 +756,6 @@ function getHTMLPage(submissionDeadline: string): string {
             color: #c62828;
         }
         
-        .example-card {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 2px solid #e0e0e0;
-        }
-        
-        .example-card h3 {
-            margin-top: 0;
-            color: #667eea;
-        }
-        
-        .example-card a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .example-card a:hover {
-            text-decoration: underline;
-        }
-        
         .section-buttons {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1338,13 +1315,6 @@ function getHTMLPage(submissionDeadline: string): string {
             
             <div id="sectionContent" class="section-content">
                 <p class="section-placeholder">上のボタンをクリックして、各セクションの内容を表示してください。<br>Click a button above to view the content of each section.</p>
-            </div>
-            
-            <div class="example-card">
-                <h3>PDFファイル / PDF Files</h3>
-                <p>完全な申請書のPDFファイルはこちらからアクセスできます。<br>Complete application PDF files can be accessed here:</p>
-                <p><a href="/wada_未踏一次審査資料.pdf" target="_blank">📄 和田さん (Wada-san)</a></p>
-                <p><a href="/水野竣介_提案プロジェクト詳細資料.pdf" target="_blank">📄 水野さん (Mizuno-san)</a></p>
             </div>
             
             <div class="info-box">
