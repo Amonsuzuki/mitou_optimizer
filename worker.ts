@@ -2303,31 +2303,31 @@ export default {
     // Supabase Auth callback handler
     if (url.pathname === '/auth/callback') {
       try {
-        // Get the code and exchange it for a session
+        // Check if we have a code (PKCE flow) or will receive tokens in fragment (implicit flow)
         const code = url.searchParams.get('code');
+        const error = url.searchParams.get('error');
+        const errorDescription = url.searchParams.get('error_description');
         
-        if (!code) {
-          return new Response('Authentication failed: No code provided', {
-            status: 400,
-            headers: { 'Content-Type': 'text/html' }
-          });
-        }
-        
-        const supabase = getSupabaseClient(env);
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        
-        if (error || !data.session) {
-          console.error('Code exchange error:', error);
+        // Handle OAuth errors
+        if (error) {
+          console.error('OAuth error:', error, errorDescription);
           return new Response(`
             <!DOCTYPE html>
             <html>
             <head>
               <title>Authentication Failed</title>
+              <style>
+                body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+                h1 { color: #c62828; }
+                a { color: #667eea; text-decoration: none; }
+                a:hover { text-decoration: underline; }
+              </style>
             </head>
             <body>
               <h1>Authentication Failed</h1>
-              <p>Failed to complete authentication. Please try again.</p>
-              <a href="/">Return to home</a>
+              <p><strong>Error:</strong> ${error}</p>
+              <p>${errorDescription || 'Please try again.'}</p>
+              <a href="/">← Return to home</a>
             </body>
             </html>
           `, {
@@ -2336,20 +2336,153 @@ export default {
           });
         }
         
-        // Redirect back to the app with the access token
+        // If we have a code, exchange it for a session (PKCE flow)
+        if (code) {
+          const supabase = getSupabaseClient(env);
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (error || !data.session) {
+            console.error('Code exchange error:', error);
+            return new Response(`
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>Authentication Failed</title>
+                <style>
+                  body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+                  h1 { color: #c62828; }
+                  a { color: #667eea; text-decoration: none; }
+                  a:hover { text-decoration: underline; }
+                </style>
+              </head>
+              <body>
+                <h1>Authentication Failed</h1>
+                <p>Failed to complete authentication. Please try again.</p>
+                <a href="/">← Return to home</a>
+              </body>
+              </html>
+            `, {
+              status: 400,
+              headers: { 'Content-Type': 'text/html' }
+            });
+          }
+          
+          // Redirect back to the app with the access token
+          return new Response(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Authentication Successful</title>
+              <style>
+                body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+                .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+              </style>
+            </head>
+            <body>
+              <div class="spinner"></div>
+              <p>Authentication successful! Redirecting...</p>
+              <script>
+                // Store the token and redirect
+                localStorage.setItem('sessionToken', '${data.session.access_token}');
+                window.location.href = '/';
+              </script>
+            </body>
+            </html>
+          `, {
+            headers: { 'Content-Type': 'text/html' }
+          });
+        }
+        
+        // If no code, handle tokens in URL fragment (implicit/PKCE flow)
+        // The tokens will be in the URL fragment, which we need to handle client-side
         return new Response(`
           <!DOCTYPE html>
           <html>
           <head>
-            <title>Authentication Successful</title>
+            <title>Completing Authentication...</title>
+            <style>
+              body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+              .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+              @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+              .error { color: #c62828; margin-top: 20px; }
+              a { color: #667eea; text-decoration: none; }
+              a:hover { text-decoration: underline; }
+            </style>
           </head>
           <body>
+            <div class="spinner"></div>
+            <p id="status">Processing authentication...</p>
+            <div id="error" class="error" style="display: none;"></div>
             <script>
-              // Store the token and redirect
-              localStorage.setItem('sessionToken', '${data.session.access_token}');
-              window.location.href = '/';
+              (function() {
+                try {
+                  // Parse tokens from URL fragment
+                  const hash = window.location.hash.substring(1);
+                  const params = new URLSearchParams(hash);
+                  
+                  const accessToken = params.get('access_token');
+                  const expiresIn = params.get('expires_in');
+                  const refreshToken = params.get('refresh_token');
+                  const tokenType = params.get('token_type');
+                  const error = params.get('error');
+                  const errorDescription = params.get('error_description');
+                  
+                  // Handle errors
+                  if (error) {
+                    console.error('OAuth error:', error, errorDescription);
+                    document.getElementById('spinner')?.remove();
+                    const errorDiv = document.getElementById('error');
+                    const statusP = document.getElementById('status');
+                    statusP.textContent = 'Authentication Failed';
+                    errorDiv.innerHTML = '<strong>Error:</strong> ' + error + '<br>' + 
+                                        (errorDescription || 'Please try again.') + 
+                                        '<br><br><a href="/">← Return to home</a>';
+                    errorDiv.style.display = 'block';
+                    return;
+                  }
+                  
+                  // Check if we have an access token
+                  if (accessToken) {
+                    // Store the token
+                    localStorage.setItem('sessionToken', accessToken);
+                    
+                    // Store refresh token if available
+                    if (refreshToken) {
+                      localStorage.setItem('refreshToken', refreshToken);
+                    }
+                    
+                    document.getElementById('status').textContent = 'Authentication successful! Redirecting...';
+                    
+                    // Redirect to home page
+                    setTimeout(function() {
+                      window.location.href = '/';
+                    }, 500);
+                  } else {
+                    // No token found
+                    console.error('No access token found in callback');
+                    const errorDiv = document.getElementById('error');
+                    const statusP = document.getElementById('status');
+                    document.querySelector('.spinner')?.remove();
+                    statusP.textContent = 'Authentication Failed';
+                    errorDiv.innerHTML = 'No authentication token received. This may be due to:<br>' +
+                                        '• Supabase configuration issue<br>' +
+                                        '• OAuth flow not properly configured<br>' +
+                                        '<br><a href="/">← Return to home and try again</a>';
+                    errorDiv.style.display = 'block';
+                  }
+                } catch (e) {
+                  console.error('Callback processing error:', e);
+                  const errorDiv = document.getElementById('error');
+                  const statusP = document.getElementById('status');
+                  document.querySelector('.spinner')?.remove();
+                  statusP.textContent = 'Authentication Failed';
+                  errorDiv.innerHTML = 'Failed to process authentication callback.<br>' +
+                                      '<br><a href="/">← Return to home</a>';
+                  errorDiv.style.display = 'block';
+                }
+              })();
             </script>
-            <p>Redirecting...</p>
           </body>
           </html>
         `, {
@@ -2357,8 +2490,26 @@ export default {
         });
       } catch (error) {
         console.error('Auth callback error:', error);
-        return new Response('Authentication failed', {
-          status: 400,
+        return new Response(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Authentication Failed</title>
+            <style>
+              body { font-family: sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+              h1 { color: #c62828; }
+              a { color: #667eea; text-decoration: none; }
+              a:hover { text-decoration: underline; }
+            </style>
+          </head>
+          <body>
+            <h1>Authentication Failed</h1>
+            <p>An unexpected error occurred during authentication.</p>
+            <a href="/">← Return to home</a>
+          </body>
+          </html>
+        `, {
+          status: 500,
           headers: { 'Content-Type': 'text/html' }
         });
       }
