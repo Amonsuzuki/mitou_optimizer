@@ -9,6 +9,8 @@
 import extractedSectionsData from './extracted-sections-data';
 // Import deadline configuration
 import deadlineConfigRaw from './deadline-config.json';
+// Import Supabase client
+import { createClient } from '@supabase/supabase-js';
 
 interface DeadlineConfig {
   submissionDeadline: string;
@@ -25,8 +27,8 @@ const deadlineConfig = deadlineConfigRaw as DeadlineConfig;
 interface Env {
   USERS_KV: KVNamespace;
   MEMORIES_KV: KVNamespace;
-  GOOGLE_CLIENT_ID?: string;
-  GOOGLE_CLIENT_SECRET?: string;
+  SUPABASE_URL: string;
+  SUPABASE_SECRET_KEY: string;
 }
 
 /**
@@ -48,14 +50,6 @@ interface Draft {
   userId: string;
   data: SectionData;
   updatedAt: string;
-}
-
-/**
- * Session data
- */
-interface Session {
-  userId: string;
-  expiresAt: number;
 }
 
 interface SectionData {
@@ -234,44 +228,45 @@ ${escapeLatex(data.section9)}
 }
 
 /**
- * Helper functions for authentication and session management
+ * Helper functions for authentication and session management with Supabase
  */
 
-// Generate a random state string for OAuth
-function generateState(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+// Create Supabase client helper
+function getSupabaseClient(env: Env) {
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
 }
 
-// Generate a random session token
-function generateSessionToken(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-}
-
-// Verify session token
+// Verify session token using Supabase
 async function verifySession(env: Env, token: string): Promise<User | null> {
   try {
-    const sessionData = await env.USERS_KV.get(`session:${token}`);
-    if (!sessionData) {
+    const supabase = getSupabaseClient(env);
+    
+    // Verify the JWT token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
       return null;
     }
     
-    const session: Session = JSON.parse(sessionData);
-    if (session.expiresAt < Date.now()) {
-      // Session expired
-      await env.USERS_KV.delete(`session:${token}`);
-      return null;
-    }
+    // Convert Supabase user to our User format
+    const appUser: User = {
+      id: user.id,
+      email: user.email || '',
+      name: user.user_metadata?.name || user.email || '',
+      picture: user.user_metadata?.avatar_url || user.user_metadata?.picture,
+      createdAt: user.created_at,
+      lastLogin: new Date().toISOString()
+    };
     
-    const userData = await env.USERS_KV.get(`user:${session.userId}`);
-    if (!userData) {
-      return null;
-    }
+    // Update user in KV for quick access (optional caching)
+    await env.USERS_KV.put(`user:${user.id}`, JSON.stringify(appUser));
     
-    return JSON.parse(userData) as User;
+    return appUser;
   } catch (error) {
     console.error('Session verification error:', error);
     return null;
@@ -2307,158 +2302,156 @@ export default {
     
     // Authentication endpoints
     
-    // Get Google OAuth URL
+    // Get Google OAuth URL using Supabase
     if (url.pathname === '/api/auth/google/url') {
-      const state = generateState();
-      // Store state in KV with 10 minute expiration
-      await env.USERS_KV.put(`oauth_state:${state}`, Date.now().toString(), { expirationTtl: 600 });
-      
-      // Get Google Client ID from environment
-      const clientId = env.GOOGLE_CLIENT_ID;
-      
-      // Check if client ID is configured
-      if (!clientId) {
-        return new Response(JSON.stringify({ 
-          error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.' 
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      
-      const redirectUri = `${url.origin}/api/auth/google/callback`;
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${encodeURIComponent(clientId)}&` +
-        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-        `response_type=code&` +
-        `scope=${encodeURIComponent('openid email profile')}&` +
-        `state=${state}`;
-      
-      return new Response(JSON.stringify({ authUrl }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Google OAuth callback
-    if (url.pathname === '/api/auth/google/callback' && request.method === 'POST') {
       try {
-        const { code, state } = await request.json() as any;
+        const supabase = getSupabaseClient(env);
         
-        // Verify state
-        const storedTime = await env.USERS_KV.get(`oauth_state:${state}`);
-        if (!storedTime) {
-          return new Response(JSON.stringify({ error: 'Invalid state' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-        await env.USERS_KV.delete(`oauth_state:${state}`);
+        // Generate auth URL using Supabase
+        const redirectTo = `${url.origin}/auth/callback`;
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo,
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent',
+            }
+          }
+        });
         
-        // Get credentials from environment
-        const clientId = env.GOOGLE_CLIENT_ID;
-        const clientSecret = env.GOOGLE_CLIENT_SECRET;
-        
-        if (!clientId || !clientSecret) {
+        if (error) {
+          console.error('Supabase OAuth URL generation error:', error);
           return new Response(JSON.stringify({ 
-            error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.' 
+            error: 'Failed to generate OAuth URL. Please check Supabase configuration.' 
           }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
         
-        // Exchange authorization code for access token
-        const redirectUri = `${url.origin}/api/auth/google/callback`;
-        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            code,
-            client_id: clientId,
-            client_secret: clientSecret,
-            redirect_uri: redirectUri,
-            grant_type: 'authorization_code',
-          }),
-        });
-        
-        if (!tokenResponse.ok) {
-          const errorData = await tokenResponse.text();
-          console.error('Token exchange failed:', errorData);
-          return new Response(JSON.stringify({ error: 'Failed to exchange authorization code' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-        
-        const tokenData = await tokenResponse.json() as any;
-        const accessToken = tokenData.access_token;
-        
-        // Get user info from Google
-        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-        
-        if (!userInfoResponse.ok) {
-          console.error('Failed to get user info');
-          return new Response(JSON.stringify({ error: 'Failed to get user information' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-        
-        const userInfo = await userInfoResponse.json() as any;
-        
-        // Create user ID with google prefix
-        const userId = `google_${userInfo.id}`;
-        
-        // Check if user already exists
-        const existingUserData = await env.USERS_KV.get(`user:${userId}`);
-        let user: User;
-        
-        if (existingUserData) {
-          // Update existing user
-          const existingUser = JSON.parse(existingUserData) as User;
-          user = {
-            ...existingUser,
-            name: userInfo.name || existingUser.name,
-            email: userInfo.email || existingUser.email,
-            picture: userInfo.picture || existingUser.picture,
-            lastLogin: new Date().toISOString()
-          };
-        } else {
-          // Create new user
-          user = {
-            id: userId,
-            email: userInfo.email,
-            name: userInfo.name,
-            picture: userInfo.picture,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString()
-          };
-        }
-        
-        // Store user in KV
-        await env.USERS_KV.put(`user:${user.id}`, JSON.stringify(user));
-        
-        // Create session
-        const sessionToken = generateSessionToken();
-        const session: Session = {
-          userId: user.id,
-          expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
-        };
-        
-        await env.USERS_KV.put(`session:${sessionToken}`, JSON.stringify(session), {
-          expirationTtl: 30 * 24 * 60 * 60 // 30 days
-        });
-        
-        return new Response(JSON.stringify({ token: sessionToken, user }), {
+        return new Response(JSON.stringify({ authUrl: data.url }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       } catch (error) {
+        console.error('OAuth URL generation error:', error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to generate OAuth URL' 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Supabase Auth callback handler
+    if (url.pathname === '/auth/callback') {
+      try {
+        // Get the code and exchange it for a session
+        const code = url.searchParams.get('code');
+        
+        if (!code) {
+          return new Response('Authentication failed: No code provided', {
+            status: 400,
+            headers: { 'Content-Type': 'text/html' }
+          });
+        }
+        
+        const supabase = getSupabaseClient(env);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        
+        if (error || !data.session) {
+          console.error('Code exchange error:', error);
+          return new Response(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Authentication Failed</title>
+            </head>
+            <body>
+              <h1>Authentication Failed</h1>
+              <p>Failed to complete authentication. Please try again.</p>
+              <a href="/">Return to home</a>
+            </body>
+            </html>
+          `, {
+            status: 400,
+            headers: { 'Content-Type': 'text/html' }
+          });
+        }
+        
+        // Redirect back to the app with the access token
+        return new Response(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Authentication Successful</title>
+          </head>
+          <body>
+            <script>
+              // Store the token and redirect
+              localStorage.setItem('sessionToken', '${data.session.access_token}');
+              window.location.href = '/';
+            </script>
+            <p>Redirecting...</p>
+          </body>
+          </html>
+        `, {
+          headers: { 'Content-Type': 'text/html' }
+        });
+      } catch (error) {
+        console.error('Auth callback error:', error);
+        return new Response('Authentication failed', {
+          status: 400,
+          headers: { 'Content-Type': 'text/html' }
+        });
+      }
+    }
+    
+    // Google OAuth callback (legacy endpoint for frontend compatibility)
+    if (url.pathname === '/api/auth/google/callback' && request.method === 'POST') {
+      try {
+        const { code } = await request.json() as any;
+        
+        if (!code) {
+          return new Response(JSON.stringify({ error: 'No code provided' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const supabase = getSupabaseClient(env);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        
+        if (error || !data.session || !data.user) {
+          console.error('Code exchange error:', error);
+          return new Response(JSON.stringify({ error: 'Failed to exchange code for session' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Convert Supabase user to our User format
+        const user: User = {
+          id: data.user.id,
+          email: data.user.email || '',
+          name: data.user.user_metadata?.name || data.user.email || '',
+          picture: data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture,
+          createdAt: data.user.created_at,
+          lastLogin: new Date().toISOString()
+        };
+        
+        // Store user in KV for quick access
+        await env.USERS_KV.put(`user:${user.id}`, JSON.stringify(user));
+        
+        return new Response(JSON.stringify({ 
+          token: data.session.access_token, 
+          user 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Authentication error:', error);
         return new Response(JSON.stringify({ error: 'Authentication failed' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -2493,7 +2486,13 @@ export default {
     if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
       const token = getAuthToken(request);
       if (token) {
-        await env.USERS_KV.delete(`session:${token}`);
+        try {
+          const supabase = getSupabaseClient(env);
+          // Sign out from Supabase (this invalidates the JWT)
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error('Logout error:', error);
+        }
       }
       
       return new Response(JSON.stringify({ success: true }), {

@@ -24,5 +24,8 @@
     "pdfjs-dist": "^5.4.530",
     "typescript": "^5.0.0",
     "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.90.1"
   }
 }
