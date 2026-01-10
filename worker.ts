@@ -2207,147 +2207,298 @@ function getHTMLPage(submissionDeadline: string): string {
                     saveBtn.title = t.save;
                 }
             }
-            document.getElementById('previewBtn').textContent = t.preview;
-            document.getElementById('downloadBtnText').textContent = t.download;
-            document.getElementById('downloadLatexText').textContent = t.downloadLatex;
-            document.getElementById('downloadPdfText').textContent = t.downloadPDF;
-            document.getElementById('logoutText').textContent = t.logout;
+            const previewBtn = document.getElementById('previewBtn');
+            const downloadBtnText = document.getElementById('downloadBtnText');
+            const downloadLatexText = document.getElementById('downloadLatexText');
+            const downloadPdfText = document.getElementById('downloadPdfText');
+            const logoutText = document.getElementById('logoutText');
+            
+            if (previewBtn) previewBtn.textContent = t.preview;
+            if (downloadBtnText) downloadBtnText.textContent = t.download;
+            if (downloadLatexText) downloadLatexText.textContent = t.downloadLatex;
+            if (downloadPdfText) downloadPdfText.textContent = t.downloadPDF;
+            if (logoutText) logoutText.textContent = t.logout;
             
             // Knowledge tab
             const knowledgeTab = document.getElementById('knowledge');
-            knowledgeTab.querySelector('h1').textContent = t.knowledgeTitle;
-            knowledgeTab.querySelector('.subtitle').textContent = t.knowledgeSubtitle;
+            if (!knowledgeTab) return; // Exit early if tab doesn't exist
+            
+            const knowledgeH1 = knowledgeTab.querySelector('h1');
+            const knowledgeSubtitle = knowledgeTab.querySelector('.subtitle');
+            if (knowledgeH1) knowledgeH1.textContent = t.knowledgeTitle;
+            if (knowledgeSubtitle) knowledgeSubtitle.textContent = t.knowledgeSubtitle;
             
             const knowledgeInfoBoxes = knowledgeTab.querySelectorAll('.info-box');
-            knowledgeInfoBoxes[0].querySelector('h3').textContent = t.aboutMitouTitle;
-            knowledgeInfoBoxes[0].querySelector('p').textContent = t.aboutMitouText;
-            const aboutList = knowledgeInfoBoxes[0].querySelectorAll('li');
-            aboutList[0].innerHTML = '<strong>' + t.eligibility + '</strong>' + t.eligibilityText;
-            aboutList[1].innerHTML = '<strong>' + t.funding + '</strong>' + t.fundingText;
-            aboutList[2].innerHTML = '<strong>' + t.period + '</strong>' + t.periodText;
-            aboutList[3].innerHTML = '<strong>' + t.benefits + '</strong>' + t.benefitsText;
-            
-            knowledgeInfoBoxes[1].querySelector('h3').textContent = t.screeningTitle;
-            const screeningList = knowledgeInfoBoxes[1].querySelectorAll('li');
-            screeningList[0].innerHTML = '<strong>' + t.originality + '</strong>' + t.originalityText;
-            screeningList[1].innerHTML = '<strong>' + t.technicalSkill + '</strong>' + t.technicalSkillText;
-            screeningList[2].innerHTML = '<strong>' + t.feasibility + '</strong>' + t.feasibilityText;
-            screeningList[3].innerHTML = '<strong>' + t.socialValue + '</strong>' + t.socialValueText;
-            screeningList[4].innerHTML = '<strong>' + t.passion + '</strong>' + t.passionText;
-            
-            knowledgeInfoBoxes[2].querySelector('h3').textContent = t.tipsTitle;
-            const tipsList = knowledgeInfoBoxes[2].querySelectorAll('li');
-            tipsList[0].textContent = t.tipsBeSpecific;
-            tipsList[1].textContent = t.tipsClarifyBackground;
-            tipsList[2].textContent = t.tipsShowEvidence;
-            tipsList[3].textContent = t.tipsDetailPlan;
-            tipsList[4].textContent = t.tipsShowPassion;
+            if (knowledgeInfoBoxes.length >= 3) {
+                const aboutH3 = knowledgeInfoBoxes[0].querySelector('h3');
+                const aboutP = knowledgeInfoBoxes[0].querySelector('p');
+                if (aboutH3) aboutH3.textContent = t.aboutMitouTitle;
+                if (aboutP) aboutP.textContent = t.aboutMitouText;
+                
+                const aboutList = knowledgeInfoBoxes[0].querySelectorAll('li');
+                if (aboutList.length >= 4) {
+                    aboutList[0].innerHTML = '<strong>' + t.eligibility + '</strong>' + t.eligibilityText;
+                    aboutList[1].innerHTML = '<strong>' + t.funding + '</strong>' + t.fundingText;
+                    aboutList[2].innerHTML = '<strong>' + t.period + '</strong>' + t.periodText;
+                    aboutList[3].innerHTML = '<strong>' + t.benefits + '</strong>' + t.benefitsText;
+                }
+                
+                const screeningH3 = knowledgeInfoBoxes[1].querySelector('h3');
+                if (screeningH3) screeningH3.textContent = t.screeningTitle;
+                
+                const screeningList = knowledgeInfoBoxes[1].querySelectorAll('li');
+                if (screeningList.length >= 5) {
+                    screeningList[0].innerHTML = '<strong>' + t.originality + '</strong>' + t.originalityText;
+                    screeningList[1].innerHTML = '<strong>' + t.technicalSkill + '</strong>' + t.technicalSkillText;
+                    screeningList[2].innerHTML = '<strong>' + t.feasibility + '</strong>' + t.feasibilityText;
+                    screeningList[3].innerHTML = '<strong>' + t.socialValue + '</strong>' + t.socialValueText;
+                    screeningList[4].innerHTML = '<strong>' + t.passion + '</strong>' + t.passionText;
+                }
+                
+                const tipsH3 = knowledgeInfoBoxes[2].querySelector('h3');
+                if (tipsH3) tipsH3.textContent = t.tipsTitle;
+                
+                const tipsList = knowledgeInfoBoxes[2].querySelectorAll('li');
+                if (tipsList.length >= 5) {
+                    tipsList[0].textContent = t.tipsBeSpecific;
+                    tipsList[1].textContent = t.tipsClarifyBackground;
+                    tipsList[2].textContent = t.tipsShowEvidence;
+                    tipsList[3].textContent = t.tipsDetailPlan;
+                    tipsList[4].textContent = t.tipsShowPassion;
+                }
+            }
             
             // Editing tab
             const editingTab = document.getElementById('editing');
-            editingTab.querySelector('h1').textContent = t.editingTitle;
-            editingTab.querySelector('.subtitle').textContent = t.editingSubtitle;
+            if (!editingTab) return; // Exit early if tab doesn't exist
+            
+            const editingH1 = editingTab.querySelector('h1');
+            const editingSubtitle = editingTab.querySelector('.subtitle');
+            if (editingH1) editingH1.textContent = t.editingTitle;
+            if (editingSubtitle) editingSubtitle.textContent = t.editingSubtitle;
             
             const editingInfoBox = editingTab.querySelector('.info-box');
-            editingInfoBox.querySelectorAll('p')[0].innerHTML = '<strong>' + t.howToUseLabel + '</strong>';
-            editingInfoBox.querySelectorAll('p')[1].textContent = t.howToUseText;
+            if (editingInfoBox) {
+                const editingInfoPs = editingInfoBox.querySelectorAll('p');
+                if (editingInfoPs.length >= 2) {
+                    editingInfoPs[0].innerHTML = '<strong>' + t.howToUseLabel + '</strong>';
+                    editingInfoPs[1].textContent = t.howToUseText;
+                }
+            }
             
             // Form labels and placeholders
             const formLabels = editingTab.querySelectorAll('label');
             const formInputs = editingTab.querySelectorAll('input, textarea');
             
-            formLabels[0].textContent = t.projectName;
-            document.getElementById('projectName').placeholder = t.projectNamePlaceholder;
-            formLabels[1].textContent = t.applicantName;
-            document.getElementById('applicantName').placeholder = t.applicantNamePlaceholder;
+            if (formLabels.length > 0) {
+                if (formLabels[0]) formLabels[0].textContent = t.projectName;
+                const projectNameInput = document.getElementById('projectName');
+                if (projectNameInput) projectNameInput.placeholder = t.projectNamePlaceholder;
+                
+                if (formLabels[1]) formLabels[1].textContent = t.applicantName;
+                const applicantNameInput = document.getElementById('applicantName');
+                if (applicantNameInput) applicantNameInput.placeholder = t.applicantNamePlaceholder;
+            }
             
-            editingTab.querySelectorAll('h2')[0].textContent = t.section1;
-            formLabels[2].textContent = t.section1_1;
-            document.getElementById('section1_1').placeholder = t.section1_1_placeholder;
+            const editingH2s = editingTab.querySelectorAll('h2');
+            const editingH3s = editingTab.querySelectorAll('h3');
             
-            editingTab.querySelectorAll('h3')[0].textContent = t.section1_2;
-            formLabels[3].textContent = t.section1_2_1;
-            document.getElementById('section1_2_1').placeholder = t.section1_2_1_placeholder;
-            formLabels[4].textContent = t.section1_2_2;
-            document.getElementById('section1_2_2').placeholder = t.section1_2_2_placeholder;
-            formLabels[5].textContent = t.section1_2_3;
-            document.getElementById('section1_2_3').placeholder = t.section1_2_3_placeholder;
+            if (editingH2s.length > 0 && editingH2s[0]) {
+                editingH2s[0].textContent = t.section1;
+            }
             
-            formLabels[6].textContent = t.section1_3;
-            document.getElementById('section1_3').placeholder = t.section1_3_placeholder;
-            formLabels[7].textContent = t.section1_4;
-            document.getElementById('section1_4').placeholder = t.section1_4_placeholder;
+            if (formLabels.length > 2 && formLabels[2]) {
+                formLabels[2].textContent = t.section1_1;
+                const section1_1Input = document.getElementById('section1_1');
+                if (section1_1Input) section1_1Input.placeholder = t.section1_1_placeholder;
+            }
             
-            editingTab.querySelectorAll('h2')[1].textContent = t.section2;
-            formLabels[8].textContent = t.section2_1;
-            document.getElementById('section2_1').placeholder = t.section2_1_placeholder;
-            formLabels[9].textContent = t.section2_2;
-            document.getElementById('section2_2').placeholder = t.section2_2_placeholder;
+            if (editingH3s.length > 0 && editingH3s[0]) {
+                editingH3s[0].textContent = t.section1_2;
+            }
             
-            editingTab.querySelectorAll('h2')[2].textContent = t.section3;
-            document.getElementById('section3').placeholder = t.section3_placeholder;
+            if (formLabels.length > 3 && formLabels[3]) {
+                formLabels[3].textContent = t.section1_2_1;
+                const section1_2_1Input = document.getElementById('section1_2_1');
+                if (section1_2_1Input) section1_2_1Input.placeholder = t.section1_2_1_placeholder;
+            }
             
-            editingTab.querySelectorAll('h2')[3].textContent = t.section4;
-            editingTab.querySelectorAll('h3')[1].textContent = t.section4_1;
-            formLabels[10].textContent = t.section4_1_1;
-            document.getElementById('section4_1_1').placeholder = t.section4_1_1_placeholder;
-            formLabels[11].textContent = t.section4_1_2;
-            document.getElementById('section4_1_2').placeholder = t.section4_1_2_placeholder;
-            formLabels[12].textContent = t.section4_1_3;
-            document.getElementById('section4_1_3').placeholder = t.section4_1_3_placeholder;
+            if (formLabels.length > 4 && formLabels[4]) {
+                formLabels[4].textContent = t.section1_2_2;
+                const section1_2_2Input = document.getElementById('section1_2_2');
+                if (section1_2_2Input) section1_2_2Input.placeholder = t.section1_2_2_placeholder;
+            }
             
-            formLabels[13].textContent = t.section4_2;
-            document.getElementById('section4_2').placeholder = t.section4_2_placeholder;
-            formLabels[14].textContent = t.section4_3;
-            document.getElementById('section4_3').placeholder = t.section4_3_placeholder;
+            if (formLabels.length > 5 && formLabels[5]) {
+                formLabels[5].textContent = t.section1_2_3;
+                const section1_2_3Input = document.getElementById('section1_2_3');
+                if (section1_2_3Input) section1_2_3Input.placeholder = t.section1_2_3_placeholder;
+            }
             
-            editingTab.querySelectorAll('h3')[2].textContent = t.section4_4;
-            formLabels[15].textContent = t.section4_4_1;
-            document.getElementById('section4_4_1').placeholder = t.section4_4_1_placeholder;
-            formLabels[16].textContent = t.section4_4_2;
-            document.getElementById('section4_4_2').placeholder = t.section4_4_2_placeholder;
+            if (formLabels.length > 6 && formLabels[6]) {
+                formLabels[6].textContent = t.section1_3;
+                const section1_3Input = document.getElementById('section1_3');
+                if (section1_3Input) section1_3Input.placeholder = t.section1_3_placeholder;
+            }
             
-            editingTab.querySelectorAll('h2')[4].textContent = t.section5;
-            document.getElementById('section5').placeholder = t.section5_placeholder;
+            if (formLabels.length > 7 && formLabels[7]) {
+                formLabels[7].textContent = t.section1_4;
+                const section1_4Input = document.getElementById('section1_4');
+                if (section1_4Input) section1_4Input.placeholder = t.section1_4_placeholder;
+            }
             
-            editingTab.querySelectorAll('h2')[5].textContent = t.section6;
-            document.getElementById('section6').placeholder = t.section6_placeholder;
+            if (editingH2s.length > 1 && editingH2s[1]) {
+                editingH2s[1].textContent = t.section2;
+            }
             
-            editingTab.querySelectorAll('h2')[6].textContent = t.section7;
-            document.getElementById('section7').placeholder = t.section7_placeholder;
+            if (formLabels.length > 8 && formLabels[8]) {
+                formLabels[8].textContent = t.section2_1;
+                const section2_1Input = document.getElementById('section2_1');
+                if (section2_1Input) section2_1Input.placeholder = t.section2_1_placeholder;
+            }
             
-            editingTab.querySelectorAll('h2')[7].textContent = t.section8;
-            document.getElementById('section8').placeholder = t.section8_placeholder;
+            if (formLabels.length > 9 && formLabels[9]) {
+                formLabels[9].textContent = t.section2_2;
+                const section2_2Input = document.getElementById('section2_2');
+                if (section2_2Input) section2_2Input.placeholder = t.section2_2_placeholder;
+            }
+            
+            if (editingH2s.length > 2 && editingH2s[2]) {
+                editingH2s[2].textContent = t.section3;
+                const section3Input = document.getElementById('section3');
+                if (section3Input) section3Input.placeholder = t.section3_placeholder;
+            }
+            
+            if (editingH2s.length > 3 && editingH2s[3]) {
+                editingH2s[3].textContent = t.section4;
+            }
+            
+            if (editingH3s.length > 1 && editingH3s[1]) {
+                editingH3s[1].textContent = t.section4_1;
+            }
+            
+            if (formLabels.length > 10 && formLabels[10]) {
+                formLabels[10].textContent = t.section4_1_1;
+                const section4_1_1Input = document.getElementById('section4_1_1');
+                if (section4_1_1Input) section4_1_1Input.placeholder = t.section4_1_1_placeholder;
+            }
+            
+            if (formLabels.length > 11 && formLabels[11]) {
+                formLabels[11].textContent = t.section4_1_2;
+                const section4_1_2Input = document.getElementById('section4_1_2');
+                if (section4_1_2Input) section4_1_2Input.placeholder = t.section4_1_2_placeholder;
+            }
+            
+            if (formLabels.length > 12 && formLabels[12]) {
+                formLabels[12].textContent = t.section4_1_3;
+                const section4_1_3Input = document.getElementById('section4_1_3');
+                if (section4_1_3Input) section4_1_3Input.placeholder = t.section4_1_3_placeholder;
+            }
+            
+            if (formLabels.length > 13 && formLabels[13]) {
+                formLabels[13].textContent = t.section4_2;
+                const section4_2Input = document.getElementById('section4_2');
+                if (section4_2Input) section4_2Input.placeholder = t.section4_2_placeholder;
+            }
+            
+            if (formLabels.length > 14 && formLabels[14]) {
+                formLabels[14].textContent = t.section4_3;
+                const section4_3Input = document.getElementById('section4_3');
+                if (section4_3Input) section4_3Input.placeholder = t.section4_3_placeholder;
+            }
+            
+            if (editingH3s.length > 2 && editingH3s[2]) {
+                editingH3s[2].textContent = t.section4_4;
+            }
+            
+            if (formLabels.length > 15 && formLabels[15]) {
+                formLabels[15].textContent = t.section4_4_1;
+                const section4_4_1Input = document.getElementById('section4_4_1');
+                if (section4_4_1Input) section4_4_1Input.placeholder = t.section4_4_1_placeholder;
+            }
+            
+            if (formLabels.length > 16 && formLabels[16]) {
+                formLabels[16].textContent = t.section4_4_2;
+                const section4_4_2Input = document.getElementById('section4_4_2');
+                if (section4_4_2Input) section4_4_2Input.placeholder = t.section4_4_2_placeholder;
+            }
+            
+            if (editingH2s.length > 4 && editingH2s[4]) {
+                editingH2s[4].textContent = t.section5;
+                const section5Input = document.getElementById('section5');
+                if (section5Input) section5Input.placeholder = t.section5_placeholder;
+            }
+            
+            if (editingH2s.length > 5 && editingH2s[5]) {
+                editingH2s[5].textContent = t.section6;
+                const section6Input = document.getElementById('section6');
+                if (section6Input) section6Input.placeholder = t.section6_placeholder;
+            }
+            
+            if (editingH2s.length > 6 && editingH2s[6]) {
+                editingH2s[6].textContent = t.section7;
+                const section7Input = document.getElementById('section7');
+                if (section7Input) section7Input.placeholder = t.section7_placeholder;
+            }
+            
+            if (editingH2s.length > 7 && editingH2s[7]) {
+                editingH2s[7].textContent = t.section8;
+                const section8Input = document.getElementById('section8');
+                if (section8Input) section8Input.placeholder = t.section8_placeholder;
+            }
 
-            editingTab.querySelectorAll('h2')[8].textContent = t.section9;
-            document.getElementById('section9').placeholder = t.section9_placeholder;
+            if (editingH2s.length > 8 && editingH2s[8]) {
+                editingH2s[8].textContent = t.section9;
+                const section9Input = document.getElementById('section9');
+                if (section9Input) section9Input.placeholder = t.section9_placeholder;
+            }
             
             // Loading and error
-            document.querySelector('#loading p').textContent = t.generating;
+            const loadingP = document.querySelector('#loading p');
+            if (loadingP) loadingP.textContent = t.generating;
             
             // Examples tab
             const examplesTab = document.getElementById('examples');
-            examplesTab.querySelector('h1').textContent = t.examplesTitle;
-            examplesTab.querySelector('.subtitle').textContent = t.examplesSubtitle;
+            if (!examplesTab) return; // Exit early if tab doesn't exist
+            
+            const examplesH1 = examplesTab.querySelector('h1');
+            const examplesSubtitle = examplesTab.querySelector('.subtitle');
+            if (examplesH1) examplesH1.textContent = t.examplesTitle;
+            if (examplesSubtitle) examplesSubtitle.textContent = t.examplesSubtitle;
             
             const examplesInfoBoxes = examplesTab.querySelectorAll('.info-box');
-            examplesInfoBoxes[0].querySelector('p').textContent = t.examplesIntro;
-            
-            const exampleCards = examplesTab.querySelectorAll('.example-card');
-            exampleCards[0].querySelector('h3').textContent = t.example1Title;
-            exampleCards[0].querySelectorAll('p')[0].textContent = t.example1Desc;
-            exampleCards[0].querySelectorAll('a')[0].textContent = t.openPdf;
-            
-            exampleCards[1].querySelector('h3').textContent = t.example2Title;
-            exampleCards[1].querySelectorAll('p')[0].textContent = t.example2Desc;
-            exampleCards[1].querySelectorAll('a')[0].textContent = t.openPdf;
-            
-            examplesInfoBoxes[1].querySelectorAll('p')[0].innerHTML = '<strong>' + t.referencePointsLabel + '</strong>';
-            const refList = examplesInfoBoxes[1].querySelectorAll('li');
-            refList[0].textContent = t.referencePoint1;
-            refList[1].textContent = t.referencePoint2;
-            refList[2].textContent = t.referencePoint3;
-            refList[3].textContent = t.referencePoint4;
+            if (examplesInfoBoxes.length >= 2) {
+                const examplesIntroP = examplesInfoBoxes[0].querySelector('p');
+                if (examplesIntroP) examplesIntroP.textContent = t.examplesIntro;
+                
+                const exampleCards = examplesTab.querySelectorAll('.example-card');
+                if (exampleCards.length >= 2) {
+                    const example1H3 = exampleCards[0].querySelector('h3');
+                    const example1Ps = exampleCards[0].querySelectorAll('p');
+                    const example1As = exampleCards[0].querySelectorAll('a');
+                    if (example1H3) example1H3.textContent = t.example1Title;
+                    if (example1Ps.length > 0) example1Ps[0].textContent = t.example1Desc;
+                    if (example1As.length > 0) example1As[0].textContent = t.openPdf;
+                    
+                    const example2H3 = exampleCards[1].querySelector('h3');
+                    const example2Ps = exampleCards[1].querySelectorAll('p');
+                    const example2As = exampleCards[1].querySelectorAll('a');
+                    if (example2H3) example2H3.textContent = t.example2Title;
+                    if (example2Ps.length > 0) example2Ps[0].textContent = t.example2Desc;
+                    if (example2As.length > 0) example2As[0].textContent = t.openPdf;
+                }
+                
+                const refPs = examplesInfoBoxes[1].querySelectorAll('p');
+                if (refPs.length > 0) refPs[0].innerHTML = '<strong>' + t.referencePointsLabel + '</strong>';
+                
+                const refList = examplesInfoBoxes[1].querySelectorAll('li');
+                if (refList.length >= 4) {
+                    refList[0].textContent = t.referencePoint1;
+                    refList[1].textContent = t.referencePoint2;
+                    refList[2].textContent = t.referencePoint3;
+                    refList[3].textContent = t.referencePoint4;
+                }
+            }
             
             // Update constants for alerts
             window.VALIDATION_ERROR_MSG = t.validationError;
