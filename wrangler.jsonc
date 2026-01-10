@@ -6,6 +6,9 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"observability": {
+		"enabled": true
+	},
 	"kv_namespaces": [
 		{
 			"binding": "USERS_KV",
