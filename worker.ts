@@ -720,7 +720,7 @@ function getHTMLPage(submissionDeadline: string): string {
             font-weight: 600;
             margin-bottom: 8px;
             color: #333;
-            font-size: 15px;
+            font-size: 18px;
         }
         
         .subsection-label {
