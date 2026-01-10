@@ -107,7 +107,7 @@ This guide explains how to set up Google OAuth authentication using Supabase for
 
 ## Step 6: Set Up Database Tables
 
-The application stores draft data in Supabase instead of Cloudflare KV. You need to create the DRAFTS table in your Supabase database.
+The application stores draft data and esquisse sessions in Supabase instead of Cloudflare KV. You need to create the DRAFTS and ESQUISSE_SESSIONS tables in your Supabase database.
 
 1. In Supabase Dashboard, go to **SQL Editor**
 
@@ -121,17 +121,18 @@ The application stores draft data in Supabase instead of Cloudflare KV. You need
 
 This will create:
 - A `drafts` table to store user draft application data
-- Row Level Security (RLS) policies to ensure users can only access their own drafts
+- An `esquisse_sessions` table to store esquisse conversation sessions
+- Row Level Security (RLS) policies to ensure users can only access their own data
 - Indexes for optimal query performance
 - Automatic timestamp updates
 
 ### Verify Table Creation
 
-To verify the table was created successfully:
+To verify the tables were created successfully:
 
 1. In Supabase Dashboard, go to **Table Editor**
-2. You should see a `drafts` table in the list
-3. Click on it to see the schema
+2. You should see both `drafts` and `esquisse_sessions` tables in the list
+3. Click on each to see the schema
 
 ## Step 7: Test the Authentication Flow
 

@@ -26,7 +26,7 @@ const deadlineConfig = deadlineConfigRaw as DeadlineConfig;
  */
 interface Env {
   USERS_KV: KVNamespace;
-  MEMORIES_KV: KVNamespace;
+  MEMORIES_KV: KVNamespace; // DEPRECATED: No longer used, esquisse sessions now in Supabase
   SUPABASE_URL: string;
   SUPABASE_SECRET_KEY: string;
   OPENROUTER_API_KEY: string;
@@ -3657,27 +3657,23 @@ export default {
           });
         }
         
-        // Get user (optional - esquisse can work without login but won't save)
+        // Get user (required for Supabase storage)
         const token = getAuthToken(request);
-        let userId = 'anonymous';
         
-        if (token) {
-          const user = await verifySession(env, token);
-          if (user) {
-            userId = user.id;
-          }
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         }
         
-        // Initialize esquisse session
-        const session: EsquisseSession = {
-          userId,
-          approach,
-          messages: [],
-          currentStep: 0,
-          completed: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
+        const user = await verifySession(env, token);
+        if (!user) {
+          return new Response(JSON.stringify({ error: 'Invalid session' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
         
         // Get initial prompt and first question from AI
         const systemPrompt = getInitialPrompt(approach);
@@ -3686,26 +3682,55 @@ export default {
           { role: 'user', content: 'はじめましょう。最初の質問をお願いします。' }
         ]);
         
-        // Add system message
-        session.messages.push({
-          role: 'system',
-          content: systemPrompt,
-          timestamp: new Date().toISOString()
-        });
+        // Initialize messages array
+        const messages = [
+          {
+            role: 'system' as const,
+            content: systemPrompt,
+            timestamp: new Date().toISOString()
+          },
+          {
+            role: 'ai' as const,
+            content: aiResponse,
+            timestamp: new Date().toISOString()
+          }
+        ];
         
-        // Add AI question
-        session.messages.push({
-          role: 'ai',
-          content: aiResponse,
-          timestamp: new Date().toISOString()
-        });
+        // Save session to Supabase
+        const supabase = getSupabaseClient(env);
+        const { data, error } = await supabase
+          .from('esquisse_sessions')
+          .upsert({
+            user_id: user.id,
+            approach: approach,
+            messages: messages,
+            current_step: 0,
+            completed: false,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
+          })
+          .select()
+          .single();
         
-        // Save session to KV
-        await env.MEMORIES_KV.put(
-          `esquisse:${userId}`,
-          JSON.stringify(session),
-          { expirationTtl: 86400 } // 24 hours
-        );
+        if (error) {
+          console.error('Failed to save esquisse session to Supabase:', error);
+          return new Response(JSON.stringify({ error: 'Failed to save session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Build session response
+        const session: EsquisseSession = {
+          userId: user.id,
+          approach: data.approach as 'forward' | 'backward',
+          messages: data.messages as EsquisseMessage[],
+          currentStep: data.current_step,
+          completed: data.completed,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at
+        };
         
         return new Response(JSON.stringify({
           session,
@@ -3737,34 +3762,59 @@ export default {
           });
         }
         
-        // Load session from KV
-        const sessionData = await env.MEMORIES_KV.get(`esquisse:${sessionId}`);
-        if (!sessionData) {
+        // Verify authentication
+        const token = getAuthToken(request);
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const user = await verifySession(env, token);
+        if (!user) {
+          return new Response(JSON.stringify({ error: 'Invalid session' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Load session from Supabase
+        const supabase = getSupabaseClient(env);
+        const { data: sessionData, error: fetchError } = await supabase
+          .from('esquisse_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (fetchError || !sessionData) {
+          console.error('Failed to load esquisse session:', fetchError);
           return new Response(JSON.stringify({ error: 'Session not found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
         
-        const session: EsquisseSession = JSON.parse(sessionData);
+        // Parse existing messages
+        const messages = sessionData.messages as EsquisseMessage[];
         
         // Add user answer to messages
-        session.messages.push({
+        messages.push({
           role: 'user',
           content: answer,
           timestamp: new Date().toISOString()
         });
         
-        session.currentStep += 1;
+        const currentStep = sessionData.current_step + 1;
         
         // Build conversation history for AI
-        const conversationHistory = session.messages.map(m => ({
+        const conversationHistory = messages.map(m => ({
           role: m.role === 'ai' ? 'assistant' : m.role === 'system' ? 'system' : 'user',
           content: m.content
         }));
         
         // Determine if conversation should end (after 5-8 exchanges)
-        const userMessageCount = session.messages.filter(m => m.role === 'user').length;
+        const userMessageCount = messages.filter(m => m.role === 'user').length;
         const shouldComplete = userMessageCount >= 5;
         
         if (shouldComplete) {
@@ -3785,21 +3835,43 @@ export default {
         const aiResponse = await callOpenRouter(env, conversationHistory);
         
         // Add AI response to messages
-        session.messages.push({
+        messages.push({
           role: 'ai',
           content: aiResponse,
           timestamp: new Date().toISOString()
         });
         
-        session.completed = shouldComplete;
-        session.updatedAt = new Date().toISOString();
+        // Update session in Supabase
+        const { data: updatedData, error: updateError } = await supabase
+          .from('esquisse_sessions')
+          .update({
+            messages: messages,
+            current_step: currentStep,
+            completed: shouldComplete,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+          .select()
+          .single();
         
-        // Save updated session
-        await env.MEMORIES_KV.put(
-          `esquisse:${sessionId}`,
-          JSON.stringify(session),
-          { expirationTtl: 86400 }
-        );
+        if (updateError) {
+          console.error('Failed to update esquisse session:', updateError);
+          return new Response(JSON.stringify({ error: 'Failed to update session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Build session response
+        const session: EsquisseSession = {
+          userId: user.id,
+          approach: updatedData.approach as 'forward' | 'backward',
+          messages: updatedData.messages as EsquisseMessage[],
+          currentStep: updatedData.current_step,
+          completed: updatedData.completed,
+          createdAt: updatedData.created_at,
+          updatedAt: updatedData.updated_at
+        };
         
         return new Response(JSON.stringify({
           session,
@@ -3832,23 +3904,56 @@ export default {
           });
         }
         
-        // Load session from KV
-        const sessionData = await env.MEMORIES_KV.get(`esquisse:${sessionId}`);
-        if (!sessionData) {
+        // Verify authentication
+        const token = getAuthToken(request);
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const user = await verifySession(env, token);
+        if (!user) {
+          return new Response(JSON.stringify({ error: 'Invalid session' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Load session from Supabase
+        const supabase = getSupabaseClient(env);
+        const { data: sessionData, error: fetchError } = await supabase
+          .from('esquisse_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (fetchError || !sessionData) {
+          console.error('Failed to load esquisse session:', fetchError);
           return new Response(JSON.stringify({ error: 'Session not found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
         
-        const session: EsquisseSession = JSON.parse(sessionData);
-        
-        if (!session.completed) {
+        if (!sessionData.completed) {
           return new Response(JSON.stringify({ error: 'Esquisse not completed yet' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
+        
+        // Build session object
+        const session: EsquisseSession = {
+          userId: user.id,
+          approach: sessionData.approach as 'forward' | 'backward',
+          messages: sessionData.messages as EsquisseMessage[],
+          currentStep: sessionData.current_step,
+          completed: sessionData.completed,
+          createdAt: sessionData.created_at,
+          updatedAt: sessionData.updated_at
+        };
         
         // Generate form data from conversation
         const formData = await generateFormDataFromEsquisse(env, session);
