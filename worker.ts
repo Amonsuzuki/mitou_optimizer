@@ -3073,6 +3073,12 @@ function getHTMLPage(submissionDeadline: string): string {
         
         // Start esquisse conversation
         async function startEsquisse(approach) {
+            // Check if user is authenticated
+            if (!sessionToken) {
+                showToast('エスキースを使用するにはログインが必要です / Please login to use Esquisse', 'warning');
+                return;
+            }
+            
             esquisseApproach = approach;
             
             // Hide approach selection
@@ -3100,7 +3106,9 @@ function getHTMLPage(submissionDeadline: string): string {
                 });
                 
                 if (!response.ok) {
-                    throw new Error('Failed to start esquisse');
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.error || 'Failed to start esquisse';
+                    throw new Error(errorMessage);
                 }
                 
                 const data = await response.json();
@@ -3111,8 +3119,14 @@ function getHTMLPage(submissionDeadline: string): string {
                 document.getElementById('esquisseStatus').textContent = '';
             } catch (error) {
                 console.error('Failed to start esquisse:', error);
-                showToast('エスキースの開始に失敗しました / Failed to start esquisse', 'error');
+                const errorMsg = error.message || 'エスキースの開始に失敗しました / Failed to start esquisse';
+                showToast(errorMsg, 'error');
                 document.getElementById('esquisseStatus').textContent = 'エラーが発生しました';
+                
+                // Reset UI to allow retry
+                document.getElementById('approachSelection').style.display = 'block';
+                document.getElementById('esquisseConversation').style.display = 'none';
+                document.getElementById('esquisseInputArea').style.display = 'none';
             }
         }
         
