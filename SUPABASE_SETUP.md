@@ -132,11 +132,13 @@ This guide explains how to set up Google OAuth authentication using Supabase for
 **Issue**: "Invalid redirect URI" error from Google
 - **Solution**: Verify that the redirect URI in Google Cloud Console matches exactly: `https://your-project-ref.supabase.co/auth/v1/callback`
 
-**Issue**: "Authentication failed" after Google login
+**Issue**: "Authentication failed: No code provided" after Google login
 - **Solution**: 
+  - This was fixed in the latest version - the app now handles both PKCE flow (with code) and implicit flow (with tokens in URL fragment)
   - Check that Google provider is enabled in Supabase
   - Verify that Client ID and Client Secret are correctly set in Supabase
   - Check browser console for detailed error messages
+  - Clear your browser cache and localStorage, then try again
 
 **Issue**: User is logged out immediately
 - **Solution**: The JWT token might be invalid. Check that you're using the `service_role` key and not the `anon` key
@@ -164,10 +166,32 @@ Google redirects to Supabase (/auth/v1/callback)
     ↓ (Supabase validates and creates session)
     ↓
 Supabase redirects to App (/auth/callback)
-    ↓ (Cloudflare Worker exchanges code for token)
+    ↓ (Two possible flows:)
     ↓
+    ├─→ PKCE Flow: Worker exchanges code for token
+    │   ↓ (Server-side code exchange)
+    │   ↓
+    └─→ Implicit Flow: Tokens in URL fragment
+        ↓ (Client-side JavaScript extracts tokens)
+        ↓
 User logged in with JWT token stored in localStorage
 ```
+
+### Authentication Flow Details
+
+The application supports two OAuth flows:
+
+1. **PKCE Flow** (Preferred for security):
+   - Supabase returns an authorization `code` as a query parameter
+   - Server exchanges the code for tokens
+   - Tokens are securely transmitted to the client
+
+2. **Implicit Flow** (Default Supabase behavior):
+   - Supabase returns tokens directly in the URL fragment (`#access_token=...`)
+   - Client-side JavaScript extracts and stores tokens
+   - No server-side code exchange needed
+
+Both flows are supported, and the application automatically handles whichever flow Supabase uses.
 
 ## Additional Resources
 
