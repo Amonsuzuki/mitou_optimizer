@@ -433,7 +433,7 @@ function getHTMLPage(submissionDeadline: string): string {
         .language-selector {
             position: fixed;
             right: 20px;
-            top: 20px;
+            bottom: 20px;
             display: flex;
             gap: 8px;
             background: white;
@@ -464,6 +464,20 @@ function getHTMLPage(submissionDeadline: string): string {
         .lang-btn:hover {
             background: #f5f5f5;
             transform: scale(1.1);
+        }
+        
+        .account-section {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
         }
         
         .action-btn {
@@ -979,13 +993,19 @@ function getHTMLPage(submissionDeadline: string): string {
             
             .language-selector {
                 right: 10px;
-                top: 10px;
+                bottom: 10px;
                 padding: 6px;
             }
             
             .lang-btn {
                 font-size: 20px;
                 padding: 6px 8px;
+            }
+            
+            .account-section {
+                right: 10px;
+                top: 10px;
+                padding: 6px;
             }
             
             .user-info {
@@ -1024,27 +1044,31 @@ function getHTMLPage(submissionDeadline: string): string {
         </div>
     </div>
     
-    <!-- Language Selector - Fixed at top right -->
+    <!-- Language Selector - Fixed at bottom right -->
     <div class="language-selector">
         <button class="lang-btn" onclick="switchLanguage('ja')" id="langJa" title="日本語" aria-label="Switch to Japanese">🇯🇵</button>
         <button class="lang-btn" onclick="switchLanguage('en')" id="langEn" title="English" aria-label="Switch to English">🇺🇸</button>
+    </div>
+    
+    <!-- Account Section - Fixed at top right -->
+    <div class="account-section">
+        <div id="userInfoContainer" style="display: none;">
+            <div class="user-info">
+                <img id="userAvatar" class="user-avatar" src="" alt="User">
+                <span id="userEmail" class="user-email"></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+        <button class="login-btn" id="loginBtn" onclick="login()" style="display: none;">
+            <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><path d="M17.6 9.2l-.1-1.8H9v3.4h4.8C13.6 12 13 13 12 13.6v2.2h3a8.8 8.8 0 0 0 2.6-6.6z" fill="#4285F4"/><path d="M9 18c2.4 0 4.5-.8 6-2.2l-3-2.2a5.4 5.4 0 0 1-8-2.9H1V13a9 9 0 0 0 8 5z" fill="#34A853"/><path d="M4 10.7a5.4 5.4 0 0 1 0-3.4V5H1a9 9 0 0 0 0 8l3-2.3z" fill="#FBBC05"/><path d="M9 3.6c1.3 0 2.5.4 3.4 1.3L15 2.3A9 9 0 0 0 1 5l3 2.4a5.4 5.4 0 0 1 5-3.7z" fill="#EA4335"/></g></svg>
+            Sign in with Google
+        </button>
     </div>
     <!-- Toast notification container -->
     <div id="toastContainer" class="toast-container"></div>
     
     <div class="top-bar">
         <div class="action-bar">
-            <div id="userInfoContainer" style="display: none;">
-                <div class="user-info">
-                    <img id="userAvatar" class="user-avatar" src="" alt="User">
-                    <span id="userEmail" class="user-email"></span>
-                    <button class="logout-btn" onclick="logout()">Logout</button>
-                </div>
-            </div>
-            <button class="login-btn" id="loginBtn" onclick="login()" style="display: none;">
-                <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><path d="M17.6 9.2l-.1-1.8H9v3.4h4.8C13.6 12 13 13 12 13.6v2.2h3a8.8 8.8 0 0 0 2.6-6.6z" fill="#4285F4"/><path d="M9 18c2.4 0 4.5-.8 6-2.2l-3-2.2a5.4 5.4 0 0 1-8-2.9H1V13a9 9 0 0 0 8 5z" fill="#34A853"/><path d="M4 10.7a5.4 5.4 0 0 1 0-3.4V5H1a9 9 0 0 0 0 8l3-2.3z" fill="#FBBC05"/><path d="M9 3.6c1.3 0 2.5.4 3.4 1.3L15 2.3A9 9 0 0 0 1 5l3 2.4a5.4 5.4 0 0 1 5-3.7z" fill="#EA4335"/></g></svg>
-                Sign in with Google
-            </button>
             <button class="action-btn disabled" id="saveBtn" onclick="saveDraft()" title="Login required">Save</button>
             <button class="action-btn" id="previewBtn" onclick="previewDocument()">Preview</button>
             <div class="download-container">
