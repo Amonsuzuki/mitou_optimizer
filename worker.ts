@@ -2298,6 +2298,17 @@ function getHTMLPage(submissionDeadline: string): string {
             menu.classList.remove('active');
         }
         
+        // Close download menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const downloadContainer = document.querySelector('.download-container');
+            const downloadMenu = document.getElementById('downloadMenu');
+            
+            // Check if the click is outside the download container
+            if (downloadContainer && downloadMenu && !downloadContainer.contains(event.target)) {
+                downloadMenu.classList.remove('active');
+            }
+        });
+        
         // Download LaTeX
         async function downloadLatex() {
             const form = document.getElementById('applicationForm');
