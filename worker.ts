@@ -658,6 +658,40 @@ function getHTMLPage(submissionDeadline: string): string {
         .deadline-content {
             flex: 1;
         }
+
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-box h3 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .info-box p {
+            color: #333;
+            line-height: 1.8;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .info-box ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .info-box li {
+            color: #333;
+            line-height: 1.8;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
         
         .deadline-label {
             font-size: 14px;
