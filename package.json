@@ -4,8 +4,12 @@
   "description": "MITOU IT project application document generator",
   "main": "worker.ts",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "generate-data": "node generate-sections-data.js",
+    "validate-data": "node validate-data.js",
+    "prebuild": "npm run generate-data",
+    "build": "npm run validate-data",
+    "dev": "npm run generate-data && wrangler dev",
+    "deploy": "npm run generate-data && npm run validate-data && wrangler deploy"
   },
   "keywords": [
     "mitou",

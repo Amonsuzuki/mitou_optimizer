@@ -1,0 +1,30 @@
+アーティストとしてコン ピューターを用いた表現を 探求する中で感じることは、巨人の肩に乗るこ
+とと同じくらいに巨人の肩を一度降りてみる事の大切さである。
+特にプログラミングについてはコン ピューターを利用する事を単なるデベロッパーと ユーザーとい
+う2つに分けてしまうのではなく 自らがデベロッパーになることでこれまで 存在しなかったものが
+作れるようになる 重要性 がある。
+しかし現在（特に表現に関わる分野であれば）において、例えば2019年現在はVRや機械学習といっ
+たいわゆる最新技術 を追いかけることは、 仕組みのわからないブラック ボックスのライブラリをた
+だ使用するだけの、再びデベロッパー/ユーザー、提供する側/享受する側の構造になってしまうよう
+にも見える。
+(ただこれは、人が作ったものを手軽に再利用できるからこそ 自分ひとりでは作れない 規模のものが
+作れるということとトレードオフの 関係でもある。)
+新しいソフトウェアを作るために 必ずしも最新の何かが必要なわけではないし、 枯れた技術が新し
+い価値を生み出すことも大いに有り得ると思う。
+ソフトウェアを作る行 為は自由を獲得する行為と同時に新たな制約を生み出すことでもあり、 広義
+の政治的行為であるということを、 今後は技術者も自覚を持っていく必要が出てくると考えている。
+参考文 献
+[1] Collins, N. and A. McLean (2014). Algorave: A survey of the history, aesthetics and
+technology of live performance of algorithmic electronic dance music. In Proceedings of
+7
+
+the International Conference on New Interfaces for Musical Expression, London, United
+Kingdom, pp. 355–358. Goldsmiths, University of London.
+[2] Brian Hempel and Ravi Chugh(2016). Semi-Automated SVG Programming via
+Direct Manipulation  (UIST 2016)
+[3]Jennifer  Jacobs(2017),Dynamic  Drawing:  Broadening  Practice  and
+Participation  in  Procedural  Art.PhD  Thesis,  Media  Arts  and  Sciences,
+Massachusetts Institute of Technology, Cambridge, MA.
+[4]渡辺愛(2015).リュック・フェラーリの 電子音響作品における逸話の構造,博士論
+文,東京藝術大学
+8

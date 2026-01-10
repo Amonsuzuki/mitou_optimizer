@@ -5,8 +5,8 @@
  * MITOU IT project application documents in LaTeX/PDF format.
  */
 
-// Import extracted sections data
-import extractedSectionsData from './extracted-sections.json';
+// Import extracted sections data from generated TypeScript file
+import extractedSectionsData from './extracted-sections-data';
 // Import deadline configuration
 import deadlineConfigRaw from './deadline-config.json';
 
