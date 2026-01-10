@@ -641,29 +641,6 @@ function getHTMLPage(submissionDeadline: string): string {
             line-height: 1;
         }
         
-        .info-box {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin-bottom: 30px;
-            border-radius: 4px;
-        }
-        
-        .info-box p {
-            color: #555;
-            line-height: 1.6;
-            margin-bottom: 8px;
-        }
-        
-        .info-box ul {
-            margin-left: 20px;
-            margin-top: 10px;
-        }
-        
-        .info-box li {
-            margin-bottom: 5px;
-        }
-        
         .form-group {
             margin-bottom: 25px;
         }
@@ -1108,32 +1085,11 @@ function getHTMLPage(submissionDeadline: string): string {
                 <h3>未踏事業とは</h3>
                 <p>未踏IT人材発掘・育成事業は、独立行政法人情報処理推進機構（IPA）が実施する、優れたIT人材を発掘・育成するためのプログラムです。</p>
                 <ul>
-                    <li><strong>対象：</strong>25歳未満の個人またはグループ</li>
+                    <li><strong>対象：</strong>「独自性・革新性があり、将来社会的インパクトを与えイノベーションを創出する可能性を秘めたテーマを実現しようとしている若い逸材（2026年4月1日時点で25歳未満）」</li>
+                    <li><strong>目的：</strong> 我が国の産業の活性化・競争力強化</li>
                     <li><strong>支援額：</strong>最大300万円</li>
                     <li><strong>期間：</strong>約9ヶ月</li>
                     <li><strong>特典：</strong>プロジェクトマネージャー（PM）による指導、開発環境の提供</li>
-                </ul>
-            </div>
-            
-            <div class="info-box">
-                <h3>審査のポイント</h3>
-                <ul>
-                    <li><strong>独創性：</strong>既存のものとは異なる新しいアイデアか</li>
-                    <li><strong>技術力：</strong>実現するための技術的能力があるか</li>
-                    <li><strong>実現可能性：</strong>期間内に完成できるか</li>
-                    <li><strong>社会的意義：</strong>世の中に価値を提供できるか</li>
-                    <li><strong>熱意：</strong>プロジェクトへの情熱が伝わるか</li>
-                </ul>
-            </div>
-            
-            <div class="info-box">
-                <h3>申請書作成のコツ</h3>
-                <ul>
-                    <li>具体的に書く：抽象的な表現ではなく、具体的な技術や数値を示す</li>
-                    <li>背景を明確に：なぜこのプロジェクトが必要なのかを丁寧に説明する</li>
-                    <li>実績を示す：過去の作品やGitHubリポジトリで技術力を証明する</li>
-                    <li>計画を詳細に：開発スケジュールと予算の使い道を明確にする</li>
-                    <li>情熱を伝える：なぜこのプロジェクトをやりたいのか、熱意を込める</li>
                 </ul>
             </div>
         </div>
@@ -1315,16 +1271,6 @@ function getHTMLPage(submissionDeadline: string): string {
             
             <div id="sectionContent" class="section-content">
                 <p class="section-placeholder">上のボタンをクリックして、各セクションの内容を表示してください。<br>Click a button above to view the content of each section.</p>
-            </div>
-            
-            <div class="info-box">
-                <p><strong>参考にする際のポイント / Key Points:</strong></p>
-                <ul>
-                    <li>各セクションの書き方や分量を参考にする / Reference the writing style and content length</li>
-                    <li>技術的な詳細度を確認する / Check the level of technical detail</li>
-                    <li>スケジュールや予算の記載方法を学ぶ / Learn how to describe schedules and budgets</li>
-                    <li>ただし、丸写しは避け、自分の言葉で書くこと / However, write in your own words</li>
-                </ul>
             </div>
         </div>
     </div>
