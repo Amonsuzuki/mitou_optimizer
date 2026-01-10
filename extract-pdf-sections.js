@@ -181,6 +181,16 @@ async function main() {
     }
   }
   
+  // Sort projects by category (directory) first, then by name
+  allProjects.sort((a, b) => {
+    if (a.category !== b.category) {
+      // 'open' comes before 'closed'
+      return a.category === 'open' ? -1 : 1;
+    }
+    // Within same category, sort alphabetically by name
+    return a.name.localeCompare(b.name);
+  });
+  
   // Save to JSON file
   const output = {
     generated: new Date().toISOString(),
