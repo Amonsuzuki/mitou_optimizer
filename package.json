@@ -7,9 +7,10 @@
     "generate-data": "node generate-sections-data.js",
     "validate-data": "node validate-data.js",
     "prebuild": "npm run generate-data",
-    "build": "npm run validate-data",
+    "build": "npm run generate-data && npm run validate-data",
     "dev": "npm run generate-data && wrangler dev",
-    "deploy": "npm run generate-data && npm run validate-data && wrangler deploy"
+    "deploy": "npm run generate-data && npm run validate-data && wrangler deploy",
+    "postinstall": "npm run generate-data"
   },
   "keywords": [
     "mitou",
