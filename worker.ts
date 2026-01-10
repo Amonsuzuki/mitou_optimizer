@@ -910,6 +910,7 @@ function getHTMLPage(submissionDeadline: string): string {
             width: 32px;
             height: 32px;
             border-radius: 50%;
+            cursor: pointer;
         }
         
         .user-email {
@@ -942,20 +943,72 @@ function getHTMLPage(submissionDeadline: string): string {
             height: 18px;
         }
         
-        .logout-btn {
-            padding: 6px 12px;
-            background: transparent;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            color: #666;
-            font-size: 12px;
+        .user-avatar-compact {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             cursor: pointer;
+            border: 2px solid #667eea;
             transition: all 0.3s;
         }
         
+        .user-avatar-compact:hover {
+            border-color: #5568d3;
+            transform: scale(1.05);
+        }
+        
+        .user-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 200px;
+            z-index: 1001;
+        }
+        
+        .user-dropdown.active {
+            display: block;
+        }
+        
+        .user-dropdown-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .user-dropdown-email {
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+            word-break: break-word;
+        }
+        
+        .user-dropdown-name {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
+        
+        .logout-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: #c62828;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+            border-radius: 0 0 6px 6px;
+        }
+        
         .logout-btn:hover {
-            background: #f5f5f5;
-            border-color: #999;
+            background: #ffebee;
         }
         
         @media (max-width: 768px) {
@@ -1051,18 +1104,26 @@ function getHTMLPage(submissionDeadline: string): string {
     </div>
     
     <!-- Account Section - Fixed at top right -->
-    <div class="account-section">
-        <div id="userInfoContainer" style="display: none;">
-            <div class="user-info">
-                <img id="userAvatar" class="user-avatar" src="" alt="User">
-                <span id="userEmail" class="user-email"></span>
-                <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-        </div>
+    <div class="account-section" id="accountSection">
+        <!-- Login button -->
         <button class="login-btn" id="loginBtn" onclick="login()" style="display: none;">
             <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><path d="M17.6 9.2l-.1-1.8H9v3.4h4.8C13.6 12 13 13 12 13.6v2.2h3a8.8 8.8 0 0 0 2.6-6.6z" fill="#4285F4"/><path d="M9 18c2.4 0 4.5-.8 6-2.2l-3-2.2a5.4 5.4 0 0 1-8-2.9H1V13a9 9 0 0 0 8 5z" fill="#34A853"/><path d="M4 10.7a5.4 5.4 0 0 1 0-3.4V5H1a9 9 0 0 0 0 8l3-2.3z" fill="#FBBC05"/><path d="M9 3.6c1.3 0 2.5.4 3.4 1.3L15 2.3A9 9 0 0 0 1 5l3 2.4a5.4 5.4 0 0 1 5-3.7z" fill="#EA4335"/></g></svg>
             Sign in with Google
         </button>
+        
+        <!-- User info (compact icon with dropdown) -->
+        <div id="userInfoContainer" style="display: none; position: relative;">
+            <img id="userAvatarCompact" class="user-avatar-compact" src="" alt="User" onclick="toggleUserDropdown()" title="">
+            <div class="user-dropdown" id="userDropdown">
+                <div class="user-dropdown-header">
+                    <div class="user-dropdown-email" id="userDropdownEmail"></div>
+                    <div class="user-dropdown-name" id="userDropdownName"></div>
+                </div>
+                <button class="logout-btn" onclick="logout()">
+                    <span id="logoutText">Logout</span>
+                </button>
+            </div>
+        </div>
     </div>
     <!-- Toast notification container -->
     <div id="toastContainer" class="toast-container"></div>
@@ -1303,6 +1364,23 @@ function getHTMLPage(submissionDeadline: string): string {
     </div>
     
     <script>
+        // Toggle user dropdown
+        function toggleUserDropdown() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('active');
+        }
+        
+        // Close user dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const userContainer = document.getElementById('userInfoContainer');
+            const dropdown = document.getElementById('userDropdown');
+            const target = event.target;
+            
+            if (userContainer && dropdown && !userContainer.contains(target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+        
         // Toggle sidebar
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -1341,6 +1419,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 downloadLatex: "LaTeX (.tex)",
                 downloadPDF: "PDF",
                 loginRequired: "ログインが必要です",
+                logout: "ログアウト",
                 
                 // Knowledge tab
                 knowledgeTitle: "未踏IT人材発掘・育成事業について",
@@ -1485,6 +1564,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 downloadLatex: "LaTeX (.tex)",
                 downloadPDF: "PDF",
                 loginRequired: "Login required",
+                logout: "Logout",
                 
                 // Knowledge tab
                 knowledgeTitle: "About MITOU IT Personnel Discovery and Development Project",
@@ -1671,13 +1751,13 @@ function getHTMLPage(submissionDeadline: string): string {
             updateDaysLeft();
             
             // Action bar
-            document.getElementById('aiReviewLabel').textContent = t.aiReview;
             document.getElementById('saveBtn').textContent = t.save;
             document.getElementById('saveBtn').title = t.loginRequired;
             document.getElementById('previewBtn').textContent = t.preview;
             document.getElementById('downloadBtnText').textContent = t.download;
             document.getElementById('downloadLatexText').textContent = t.downloadLatex;
             document.getElementById('downloadPdfText').textContent = t.downloadPDF;
+            document.getElementById('logoutText').textContent = t.logout;
             
             // Knowledge tab
             const knowledgeTab = document.getElementById('knowledge');
@@ -1947,8 +2027,16 @@ function getHTMLPage(submissionDeadline: string): string {
         
         // Show user info
         function showUserInfo(user) {
-            document.getElementById('userEmail').textContent = user.email;
-            document.getElementById('userAvatar').src = user.picture || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="%23667eea"/><text x="16" y="22" text-anchor="middle" fill="white" font-size="16">' + (user.name?.[0] || 'U') + '</text></svg>';
+            // Update compact avatar
+            const avatarUrl = user.picture || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><circle cx="20" cy="20" r="20" fill="%23667eea"/><text x="20" y="28" text-anchor="middle" fill="white" font-size="20" font-weight="bold">' + (user.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U') + '</text></svg>';
+            document.getElementById('userAvatarCompact').src = avatarUrl;
+            document.getElementById('userAvatarCompact').title = user.name || user.email;
+            
+            // Update dropdown content
+            document.getElementById('userDropdownEmail').textContent = user.email;
+            document.getElementById('userDropdownName').textContent = user.name || '';
+            
+            // Show user info container, hide login button
             document.getElementById('loginBtn').style.display = 'none';
             document.getElementById('userInfoContainer').style.display = 'block';
         }
@@ -1991,6 +2079,12 @@ function getHTMLPage(submissionDeadline: string): string {
         
         // Logout
         async function logout() {
+            // Close dropdown
+            const dropdown = document.getElementById('userDropdown');
+            if (dropdown) {
+                dropdown.classList.remove('active');
+            }
+            
             try {
                 if (sessionToken) {
                     await fetch('/api/auth/logout', {
