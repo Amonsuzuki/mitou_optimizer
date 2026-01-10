@@ -6,8 +6,8 @@ package-lock.json
 dist/
 .wrangler/
 
-# Generated files
-extracted_sections/
+# Generated TypeScript data file (regenerated from text files)
+extracted-sections-data.ts
 
 # Environment files
 .dev.vars
