@@ -516,6 +516,18 @@ function getHTMLPage(submissionDeadline: string): string {
         .action-btn.disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .action-btn.saved {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+        
+        .action-btn.saved:hover {
+            background: #45a049;
+            border-color: #45a049;
         }
         
         .download-container {
@@ -1137,7 +1149,7 @@ function getHTMLPage(submissionDeadline: string): string {
     
     <div class="top-bar">
         <div class="action-bar">
-            <button class="action-btn disabled" id="saveBtn" onclick="saveDraft()" title="Login required">Save</button>
+            <button class="action-btn disabled" id="saveBtn" onclick="saveDraft()" title="Login required"><span id="saveBtnText">Save</span></button>
             <button class="action-btn" id="previewBtn" onclick="previewDocument()">Preview</button>
             <div class="download-container">
                 <button class="action-btn primary" id="downloadBtn" onclick="toggleDownloadMenu()">
@@ -1420,6 +1432,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 // Action bar
                 save: "下書き保存",
+                saved: "✓ 保存済み",
                 preview: "プレビュー",
                 download: "ダウンロード",
                 downloadLatex: "LaTeX (.tex)",
@@ -1547,6 +1560,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 // Action bar
                 save: "Save",
+                saved: "✓ Saved",
                 preview: "Preview",
                 download: "Download",
                 downloadLatex: "LaTeX (.tex)",
@@ -1738,8 +1752,24 @@ function getHTMLPage(submissionDeadline: string): string {
             updateDaysLeft();
             
             // Action bar
-            document.getElementById('saveBtn').textContent = t.save;
-            document.getElementById('saveBtn').title = t.loginRequired;
+            const saveBtnText = document.getElementById('saveBtnText');
+            const saveBtn = document.getElementById('saveBtn');
+            if (saveBtnText && saveBtn) {
+                // Update text based on current state
+                if (saveBtn.classList.contains('saved')) {
+                    saveBtnText.textContent = t.saved;
+                } else {
+                    saveBtnText.textContent = t.save;
+                }
+                // Only update title if button is disabled and not in saved state
+                if (saveBtn.classList.contains('disabled') && !saveBtn.classList.contains('saved')) {
+                    saveBtn.title = t.loginRequired;
+                } else if (saveBtn.classList.contains('saved')) {
+                    saveBtn.title = t.saved;
+                } else {
+                    saveBtn.title = t.save;
+                }
+            }
             document.getElementById('previewBtn').textContent = t.preview;
             document.getElementById('downloadBtnText').textContent = t.download;
             document.getElementById('downloadLatexText').textContent = t.downloadLatex;
@@ -1973,6 +2003,10 @@ function getHTMLPage(submissionDeadline: string): string {
         let currentUser = null;
         let sessionToken = null;
         
+        // Form state tracking
+        let savedFormData = null;
+        let isFormSaved = false;
+        
         // Check authentication status on page load
         async function checkAuth() {
             const token = localStorage.getItem('sessionToken');
@@ -2031,14 +2065,70 @@ function getHTMLPage(submissionDeadline: string): string {
         function enableSaveButton() {
             const saveBtn = document.getElementById('saveBtn');
             saveBtn.classList.remove('disabled');
-            saveBtn.title = 'Save your draft';
+            saveBtn.title = translations[currentLang].save;
         }
         
         // Disable save button
         function disableSaveButton() {
             const saveBtn = document.getElementById('saveBtn');
             saveBtn.classList.add('disabled');
-            saveBtn.title = 'Login required';
+            saveBtn.title = translations[currentLang].loginRequired;
+        }
+        
+        // Mark form as saved
+        function markFormAsSaved() {
+            const saveBtn = document.getElementById('saveBtn');
+            const saveBtnText = document.getElementById('saveBtnText');
+            
+            saveBtn.classList.add('saved');
+            saveBtn.classList.add('disabled');
+            saveBtnText.textContent = translations[currentLang].saved;
+            saveBtn.title = translations[currentLang].saved;
+            
+            isFormSaved = true;
+            
+            // Store current form data as saved state
+            const form = document.getElementById('applicationForm');
+            const formData = new FormData(form);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            savedFormData = JSON.stringify(data);
+        }
+        
+        // Mark form as modified (not saved)
+        function markFormAsModified() {
+            if (!currentUser || !sessionToken) {
+                return; // Don't enable if not logged in
+            }
+            
+            const saveBtn = document.getElementById('saveBtn');
+            const saveBtnText = document.getElementById('saveBtnText');
+            
+            saveBtn.classList.remove('saved');
+            saveBtn.classList.remove('disabled');
+            saveBtnText.textContent = translations[currentLang].save;
+            saveBtn.title = translations[currentLang].save;
+            
+            isFormSaved = false;
+        }
+        
+        // Check if form has been modified
+        function hasFormChanged() {
+            if (savedFormData === null) {
+                return true; // No saved state, consider as changed
+            }
+            
+            const form = document.getElementById('applicationForm');
+            const formData = new FormData(form);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            const currentData = JSON.stringify(data);
+            
+            return currentData !== savedFormData;
         }
         
         // Login with Google
@@ -2119,6 +2209,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 if (response.ok) {
                     showToast('下書きを保存しました。 / Draft saved successfully.', 'success');
+                    markFormAsSaved();
                 } else {
                     throw new Error('Failed to save draft');
                 }
@@ -2153,6 +2244,8 @@ function getHTMLPage(submissionDeadline: string): string {
                                 localStorage.setItem(key, draft.data[key]);
                             }
                         });
+                        // Mark form as saved after loading
+                        markFormAsSaved();
                     }
                 }
             } catch (error) {
@@ -2398,6 +2491,10 @@ function getHTMLPage(submissionDeadline: string): string {
             // Save on change
             input.addEventListener('input', function() {
                 localStorage.setItem(this.id, this.value);
+                // Mark form as modified when any input changes
+                if (isFormSaved) {
+                    markFormAsModified();
+                }
             });
         });
     </script>
