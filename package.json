@@ -6,6 +6,7 @@
   "scripts": {
     "generate-data": "node generate-sections-data.js",
     "validate-data": "node validate-data.js",
+    "validate-migration": "node validate-migration.js",
     "prebuild": "npm run generate-data",
     "build": "npm run generate-data && npm run validate-data",
     "dev": "npm run generate-data && wrangler dev",
