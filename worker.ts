@@ -1145,7 +1145,7 @@ function getHTMLPage(submissionDeadline: string): string {
     <div class="sidebar" id="sidebar">
         <div class="nav-tabs">
             <button class="nav-tab" data-tab="knowledge">General knowledge to pass MITOU</button>
-            <button class="nav-tab" data-tab="editing">Editing page</button>
+            <button class="nav-tab active" data-tab="editing">Editing page</button>
             <button class="nav-tab" data-tab="examples">Successful applicants' examples</button>
         </div>
     </div>
@@ -1231,7 +1231,7 @@ function getHTMLPage(submissionDeadline: string): string {
         </div>
         
         <!-- Editing Tab -->
-        <div class="tab-content" id="editing">
+        <div class="tab-content active" id="editing">
             <h1>未踏IT人材発掘・育成事業</h1>
             <p class="subtitle">提案プロジェクト詳細資料 作成ツール</p>
             
@@ -1956,9 +1956,6 @@ function getHTMLPage(submissionDeadline: string): string {
         document.addEventListener('DOMContentLoaded', function() {
             switchLanguage(currentLang);
             
-            // Initialize tab based on URL
-            initializeTabFromURL();
-            
             // Setup click outside listener for download menu (optimized with cached elements)
             const downloadContainer = document.querySelector('.download-container');
             const downloadMenu = document.getElementById('downloadMenu');
@@ -2016,84 +2013,24 @@ function getHTMLPage(submissionDeadline: string): string {
             }, duration);
         }
         
-        // Function to switch to a tab
-        function switchToTab(tabName) {
-            // Update active tab button
-            document.querySelectorAll('.nav-tab').forEach(t => {
-                if (t.getAttribute('data-tab') === tabName) {
-                    t.classList.add('active');
-                } else {
-                    t.classList.remove('active');
-                }
-            });
-            
-            // Show corresponding content
-            document.querySelectorAll('.tab-content').forEach(content => {
-                if (content.id === tabName) {
-                    content.classList.add('active');
-                } else {
-                    content.classList.remove('active');
-                }
-            });
-            
-            // Close sidebar after selecting a tab
-            closeSidebar();
-        }
-        
-        // Function to get tab name from URL path
-        function getTabFromPath(pathname) {
-            // Remove leading/trailing slashes
-            const path = pathname.replace(/^\/+|\/+$/g, '');
-            
-            // Map paths to tab names
-            if (path === 'knowledge') {
-                return 'knowledge';
-            } else if (path === 'examples') {
-                return 'examples';
-            } else if (path === 'editing' || path === '') {
-                return 'editing';
-            }
-            
-            // Default to editing
-            return 'editing';
-        }
-        
-        // Initialize tab based on current URL on page load
-        function initializeTabFromURL() {
-            const currentPath = window.location.pathname;
-            const tabName = getTabFromPath(currentPath);
-            switchToTab(tabName);
-        }
-        
-        // Tab switching with URL update
+        // Tab switching
         document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', function(e) {
-                e.preventDefault();
+            tab.addEventListener('click', function() {
                 const targetTab = this.getAttribute('data-tab');
                 
-                // Update URL based on tab
-                let newPath = '/';
-                if (targetTab === 'knowledge') {
-                    newPath = '/knowledge';
-                } else if (targetTab === 'examples') {
-                    newPath = '/examples';
-                } else if (targetTab === 'editing') {
-                    newPath = '/editing';
-                }
+                // Update active tab button
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
                 
-                // Update browser history
-                window.history.pushState({ tab: targetTab }, '', newPath);
+                // Show corresponding content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(targetTab).classList.add('active');
                 
-                // Switch to the tab
-                switchToTab(targetTab);
+                // Close sidebar after selecting a tab
+                closeSidebar();
             });
-        });
-        
-        // Handle browser back/forward buttons
-        window.addEventListener('popstate', function(event) {
-            const currentPath = window.location.pathname;
-            const tabName = getTabFromPath(currentPath);
-            switchToTab(tabName);
         });
         
         // Authentication and Draft Management
