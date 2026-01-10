@@ -91,6 +91,7 @@ interface SectionData {
   section6: string;  // プロジェクト遂行にあたっての特記事項
   section7: string;  // ソフトウェア作成以外の勉強、特技、生活、趣味など
   section8: string;  // 将来のソフトウェア技術に対して思うこと・期待すること
+  section9: string;  // Reference
 }
 
 /**
@@ -224,6 +225,8 @@ ${escapeLatex(data.section7)}
 
 \\section{将来のソフトウェア技術に対して思うこと・期待すること}
 ${escapeLatex(data.section8)}
+
+${escapeLatex(data.section9)}
 
 \\end{document}`;
 
@@ -1237,6 +1240,11 @@ function getHTMLPage(submissionDeadline: string): string {
                 <div class="form-group">
                     <textarea id="section8" name="section8" placeholder="ソフトウェア技術の将来についてあなたの考えを述べてください..."></textarea>
                 </div>
+
+                <h2>9. 参考文献</h2>
+                <div class="form-group">
+                    <textarea id="section9" name="section9" placeholder=""></textarea>
+                </div>
             </form>
             
             <div class="loading" id="loading">
@@ -1412,6 +1420,9 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 section8: "8. 将来のソフトウェア技術に対して思うこと・期待すること",
                 section8_placeholder: "ソフトウェア技術の将来についてあなたの考えを述べてください...",
+
+                section9: "9. 参考文献",
+                section9_placeholder: "",
                 
                 // Examples tab
                 examplesTitle: "合格者の申請書例",
@@ -1553,6 +1564,9 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 section8: "8. Thoughts and Expectations for Future Software Technology",
                 section8_placeholder: "Please express your thoughts on the future of software technology...",
+
+                section9: "9. Reference",
+                section9_placeholder: "",
                 
                 // Examples tab
                 examplesTitle: "Successful Applicants' Examples",
@@ -1752,6 +1766,9 @@ function getHTMLPage(submissionDeadline: string): string {
             
             editingTab.querySelectorAll('h2')[7].textContent = t.section8;
             document.getElementById('section8').placeholder = t.section8_placeholder;
+
+            editingTab.querySelectorAll('h2')[8].textContent = t.section9;
+            document.getElementById('section9').placeholder = t.section9_placeholder;
             
             // Loading and error
             document.querySelector('#loading p').textContent = t.generating;
@@ -2598,7 +2615,8 @@ export default {
           section5: data.section5 || '',
           section6: data.section6 || '',
           section7: data.section7 || '',
-          section8: data.section8 || ''
+          section8: data.section8 || '',
+          section9: data.section9 || '',
         };
         
         const latex = generateLatex(sectionData);
