@@ -105,7 +105,35 @@ This guide explains how to set up Google OAuth authentication using Supabase for
      - **Value**: Your Supabase service_role key
 5. Click **Save and Deploy**
 
-## Step 6: Test the Authentication Flow
+## Step 6: Set Up Database Tables
+
+The application stores draft data in Supabase instead of Cloudflare KV. You need to create the DRAFTS table in your Supabase database.
+
+1. In Supabase Dashboard, go to **SQL Editor**
+
+2. Click **New query**
+
+3. Copy the contents of `supabase-schema.sql` file from the project root
+
+4. Paste it into the SQL editor
+
+5. Click **Run** to execute the SQL commands
+
+This will create:
+- A `drafts` table to store user draft application data
+- Row Level Security (RLS) policies to ensure users can only access their own drafts
+- Indexes for optimal query performance
+- Automatic timestamp updates
+
+### Verify Table Creation
+
+To verify the table was created successfully:
+
+1. In Supabase Dashboard, go to **Table Editor**
+2. You should see a `drafts` table in the list
+3. Click on it to see the schema
+
+## Step 7: Test the Authentication Flow
 
 ### Local Testing
 

@@ -105,11 +105,16 @@ Configure these in Cloudflare Workers dashboard or `.dev.vars` file:
    - For local development, create a `.dev.vars` file (copy from `.dev.vars.example`)
    - For production, set these in Cloudflare Workers dashboard under Settings > Variables
 
-## KV Namespaces
+## Storage
 
-The worker uses two KV namespaces:
-- `USERS_KV` - Stores user authentication data
-- `MEMORIES_KV` - Stores draft application data
+The application uses different storage solutions for different data:
+
+### Supabase Database
+- **DRAFTS table** - Stores user draft application data with PostgreSQL for better data integrity and querying capabilities
+- **Authentication** - Manages user sessions and Google OAuth
+
+### Cloudflare KV Namespaces
+- `USERS_KV` - Caches user authentication data for quick access (optional performance optimization)
 
 ## Troubleshooting
 

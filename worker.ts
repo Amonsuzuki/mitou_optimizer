@@ -44,12 +44,14 @@ interface User {
 }
 
 /**
- * Draft data stored in MEMORIES_KV
+ * Draft data stored in Supabase DRAFTS table
  */
 interface Draft {
+  id?: string;
   userId: string;
   data: SectionData;
   updatedAt: string;
+  createdAt?: string;
 }
 
 interface SectionData {
@@ -2789,18 +2791,33 @@ export default {
       
       try {
         const data = await request.json() as any;
-        const draft: Draft = {
-          userId: user.id,
-          data: data as SectionData,
-          updatedAt: new Date().toISOString()
-        };
+        const supabase = getSupabaseClient(env);
         
-        await env.MEMORIES_KV.put(`draft:${user.id}`, JSON.stringify(draft));
+        // Upsert draft data into Supabase DRAFTS table
+        // This will insert if no draft exists, or update if one already exists for this user
+        const { error } = await supabase
+          .from('drafts')
+          .upsert({
+            user_id: user.id,
+            data: data,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
+          });
+        
+        if (error) {
+          console.error('Failed to save draft to Supabase:', error);
+          return new Response(JSON.stringify({ error: 'Failed to save draft' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
         
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       } catch (error) {
+        console.error('Save draft error:', error);
         return new Response(JSON.stringify({ error: 'Failed to save draft' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -2827,18 +2844,50 @@ export default {
       }
       
       try {
-        const draftData = await env.MEMORIES_KV.get(`draft:${user.id}`);
-        if (!draftData) {
+        const supabase = getSupabaseClient(env);
+        
+        // Query draft data from Supabase DRAFTS table
+        const { data: drafts, error } = await supabase
+          .from('drafts')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error) {
+          // If no draft found (404), return empty data instead of error
+          if (error.code === 'PGRST116') {
+            return new Response(JSON.stringify({ data: null }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+          
+          console.error('Failed to load draft from Supabase:', error);
+          return new Response(JSON.stringify({ error: 'Failed to load draft' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        if (!drafts) {
           return new Response(JSON.stringify({ data: null }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
         
-        const draft: Draft = JSON.parse(draftData);
+        // Convert Supabase response to Draft format
+        const draft: Draft = {
+          id: drafts.id,
+          userId: drafts.user_id,
+          data: drafts.data as SectionData,
+          updatedAt: drafts.updated_at,
+          createdAt: drafts.created_at
+        };
+        
         return new Response(JSON.stringify(draft), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       } catch (error) {
+        console.error('Load draft error:', error);
         return new Response(JSON.stringify({ error: 'Failed to load draft' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
