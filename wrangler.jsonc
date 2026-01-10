@@ -15,6 +15,9 @@
 			"id": "a04957a72b2547ff853936dcf8a0088a"
 		},
 		{
+			// DEPRECATED: MEMORIES_KV is no longer used
+			// Draft data is now stored in Supabase DRAFTS table
+			// This binding is kept for backward compatibility but can be removed
 			"binding": "MEMORIES_KV",
 			"id": "96860aba3bac4f4192395bcf53e4be4f"
 		}
