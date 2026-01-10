@@ -1,0 +1,12 @@
+# Google OAuth Configuration
+# Get these credentials from Google Cloud Console:
+# 1. Go to https://console.cloud.google.com/
+# 2. Create a new project or select an existing one
+# 3. Enable the Google+ API
+# 4. Go to "Credentials" and create OAuth 2.0 Client ID
+# 5. Set authorized redirect URIs to: http://localhost:8787/api/auth/google/callback (for dev)
+#    and your production URL: https://your-domain.com/api/auth/google/callback
+# 6. Copy the Client ID and Client Secret below
+
+GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret-here
