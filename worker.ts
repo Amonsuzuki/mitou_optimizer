@@ -454,19 +454,18 @@ function getHTMLPage(submissionDeadline: string): string {
             transition: all 0.3s;
             background: transparent;
             line-height: 1;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
+        }
+        
+        .lang-btn.active {
+            display: flex;
         }
         
         .lang-btn:hover {
             background: #f5f5f5;
             transform: scale(1.1);
-        }
-        
-        .lang-btn.active {
-            border-color: #667eea;
-            background: #f0f4ff;
         }
         
         .action-btn {
@@ -1702,9 +1701,11 @@ function getHTMLPage(submissionDeadline: string): string {
             currentLang = lang;
             localStorage.setItem('language', lang);
             
-            // Update active button
-            document.getElementById('langJa').classList.toggle('active', lang === 'ja');
-            document.getElementById('langEn').classList.toggle('active', lang === 'en');
+            // Show only the button for the opposite language
+            // When showing Japanese text, show English flag button
+            // When showing English text, show Japanese flag button
+            document.getElementById('langJa').classList.toggle('active', lang === 'en');
+            document.getElementById('langEn').classList.toggle('active', lang === 'ja');
             
             // Update all translatable elements
             updateTranslations();
