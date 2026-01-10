@@ -1187,7 +1187,6 @@ function getHTMLPage(submissionDeadline: string): string {
             <div class="info-box">
                 <p><strong>使い方：</strong></p>
                 <p>各セクションに内容を記入して「ダウンロード」ボタンをクリックし、LaTeXまたはPDF形式を選択すると、ファイルがダウンロードされます。</p>
-                <p>入力内容は自動的に保存されますので、安心して編集を進めてください。</p>
             </div>
             
             <form id="applicationForm">
@@ -1415,7 +1414,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 deadlinePassed: "締切を過ぎました",
                 
                 // Action bar
-                save: "保存",
+                save: "下書き保存",
                 preview: "プレビュー",
                 download: "ダウンロード",
                 downloadLatex: "LaTeX (.tex)",
@@ -1442,7 +1441,6 @@ function getHTMLPage(submissionDeadline: string): string {
                 editingSubtitle: "提案プロジェクト詳細資料 作成ツール",
                 howToUseLabel: "使い方：",
                 howToUseText: "各セクションに内容を記入して「ダウンロード」ボタンをクリックし、LaTeXまたはPDF形式を選択すると、ファイルがダウンロードされます。",
-                autoSaveText: "入力内容は自動的に保存されますので、安心して編集を進めてください。",
                 
                 projectName: "プロジェクト名",
                 projectNamePlaceholder: "例：AIを活用した教育支援システム",
@@ -1587,7 +1585,6 @@ function getHTMLPage(submissionDeadline: string): string {
                 editingSubtitle: "Proposal Project Detailed Document Creation Tool",
                 howToUseLabel: "How to use:",
                 howToUseText: "Fill in each section and click the \\"Download\\" button, then select LaTeX or PDF format to download the file.",
-                autoSaveText: "Your input is automatically saved, so you can edit with confidence.",
                 
                 projectName: "Project Name",
                 projectNamePlaceholder: "e.g., AI-based Educational Support System",
@@ -1782,7 +1779,6 @@ function getHTMLPage(submissionDeadline: string): string {
             const editingInfoBox = editingTab.querySelector('.info-box');
             editingInfoBox.querySelectorAll('p')[0].innerHTML = '<strong>' + t.howToUseLabel + '</strong>';
             editingInfoBox.querySelectorAll('p')[1].textContent = t.howToUseText;
-            editingInfoBox.querySelectorAll('p')[2].textContent = t.autoSaveText;
             
             // Form labels and placeholders
             const formLabels = editingTab.querySelectorAll('label');
