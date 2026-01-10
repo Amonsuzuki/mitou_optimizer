@@ -142,11 +142,11 @@ The application uses different storage solutions for different data:
 
 ### Supabase Database
 - **DRAFTS table** - Stores user draft application data with PostgreSQL for better data integrity and querying capabilities
+- **ESQUISSE_SESSIONS table** - Stores esquisse conversation sessions (replaces the temporary KV storage with persistent database storage)
 - **Authentication** - Manages user sessions and Google OAuth
 
 ### Cloudflare KV Namespaces
 - `USERS_KV` - Caches user authentication data for quick access (optional performance optimization)
-- `MEMORIES_KV` - Stores temporary esquisse conversation sessions (24 hour TTL)
 
 ## Troubleshooting
 

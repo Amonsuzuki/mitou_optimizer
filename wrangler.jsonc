@@ -16,7 +16,7 @@
 		},
 		{
 			// DEPRECATED: MEMORIES_KV is no longer used
-			// Draft data is now stored in Supabase DRAFTS table
+			// Esquisse sessions are now stored in Supabase ESQUISSE_SESSIONS table
 			// This binding is kept for backward compatibility but can be removed
 			"binding": "MEMORIES_KV",
 			"id": "96860aba3bac4f4192395bcf53e4be4f"
