@@ -145,6 +145,11 @@ function generateLatex(data: SectionData): string {
 \\usepackage[top=20mm,bottom=20mm,left=20mm,right=20mm]{geometry}
 \\usepackage{graphicx}
 \\usepackage{url}
+\\usepackage{titlesec}
+
+% Make subsubsection titles bold to match subsection style
+\\titleformat{\\subsubsection}
+  {\\normalfont\\normalsize\\bfseries}{\\thesubsubsection}{1em}{}
 
 \\title{未踏IT人材発掘・育成事業\\\\提案プロジェクト詳細資料}
 \\date{\\today}
