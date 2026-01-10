@@ -5,9 +5,26 @@ A web application to help users create MITOU IT project application documents in
 ## Overview
 
 This Cloudflare Worker serves a web interface that allows applicants to:
+- Use the **Esquisse** (思考の過程) feature to develop ideas through AI-guided conversation
 - Fill in all required sections for a MITOU project proposal
 - View examples from successful past applications
 - Download the completed application as LaTeX or PDF
+
+### Esquisse Feature
+
+The Esquisse feature helps users develop and articulate their project ideas through an interactive AI conversation. Users can choose between two approaches:
+
+- **順算 (Forward)**: Starting from intrinsic motivation
+  - Explore what you want to create
+  - Identify the meaning and impact
+  - Determine whose problems you're solving
+  
+- **逆算 (Backward)**: Starting from an issue/problem
+  - Identify a problem to solve
+  - Understand why it hasn't been solved yet
+  - Articulate why you're the right person to solve it
+
+After completing the conversation, users can click "資料に反映する" to automatically populate the application form with content generated from their responses.
 
 ## Development
 
@@ -75,6 +92,20 @@ Configure these in Cloudflare Workers dashboard or `.dev.vars` file:
 
 - `SUPABASE_URL` - Supabase project URL (required for authentication)
 - `SUPABASE_SECRET_KEY` - Supabase service_role key (required for authentication, NOT the anon key)
+- `OPENROUTER_API_KEY` - OpenRouter API key (required for Esquisse AI feature)
+
+### Setting up OpenRouter
+
+1. **Get an API Key**
+   - Go to https://openrouter.ai/
+   - Sign up or log in
+   - Navigate to API Keys and create a new key
+   
+2. **Configure the API Key**
+   - For local development, add `OPENROUTER_API_KEY=your-key-here` to `.dev.vars`
+   - For production, set this in Cloudflare Workers dashboard under Settings > Variables
+
+The Esquisse feature uses the `google/gemma-3-27b-it:free` model which is free to use.
 
 ### Setting up Supabase Authentication
 
@@ -115,6 +146,7 @@ The application uses different storage solutions for different data:
 
 ### Cloudflare KV Namespaces
 - `USERS_KV` - Caches user authentication data for quick access (optional performance optimization)
+- `MEMORIES_KV` - Stores temporary esquisse conversation sessions (24 hour TTL)
 
 ## Troubleshooting
 

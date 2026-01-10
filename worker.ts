@@ -29,6 +29,7 @@ interface Env {
   MEMORIES_KV: KVNamespace;
   SUPABASE_URL: string;
   SUPABASE_SECRET_KEY: string;
+  OPENROUTER_API_KEY: string;
 }
 
 /**
@@ -88,6 +89,25 @@ interface SectionData {
   section7: string;  // ソフトウェア作成以外の勉強、特技、生活、趣味など
   section8: string;  // 将来のソフトウェア技術に対して思うこと・期待すること
   section9: string;  // Reference
+}
+
+/**
+ * Esquisse conversation data
+ */
+interface EsquisseMessage {
+  role: 'system' | 'ai' | 'user';
+  content: string;
+  timestamp: string;
+}
+
+interface EsquisseSession {
+  userId: string;
+  approach: 'forward' | 'backward';  // 順算 or 逆算
+  messages: EsquisseMessage[];
+  currentStep: number;
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -232,6 +252,129 @@ ${escapeLatex(data.section9)}
 \\end{document}`;
 
   return latex;
+}
+
+/**
+ * Call OpenRouter API for esquisse AI responses
+ */
+async function callOpenRouter(env: Env, messages: Array<{role: string, content: string}>): Promise<string> {
+  if (!env.OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY not configured');
+  }
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://mitou-optimizer.pages.dev',
+      'X-Title': 'MITOU Optimizer Esquisse'
+    },
+    body: JSON.stringify({
+      model: 'google/gemma-3-27b-it:free',
+      messages: messages
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('OpenRouter API error:', errorText);
+    throw new Error(`OpenRouter API failed: ${response.status}`);
+  }
+
+  const data = await response.json() as any;
+  return data.choices[0].message.content;
+}
+
+/**
+ * Generate initial question based on approach
+ */
+function getInitialPrompt(approach: 'forward' | 'backward'): string {
+  if (approach === 'forward') {
+    return `あなたは未踏IT人材発掘・育成事業の申請書作成を支援するAIアシスタントです。
+ユーザーは「順算」アプローチ（内発的動機から始める）を選択しました。
+
+以下の流れでユーザーとの対話を進めてください：
+
+1. まず、ユーザーが内発的動機に溢れているか、内発的動機の言語化をしたいかを尋ねる
+2. 内発的動機に溢れている場合：
+   - 何を作るか
+   - それにどんな意味があるか
+   - 誰の課題を解決するか
+   を段階的に尋ねる
+3. 内発的動機の言語化をしたい場合：
+   - 最も高揚した瞬間について尋ねる
+   - その経験から導き出される動機を一緒に探る
+
+最終的に、このプロジェクトがどのようなイシュー（社会課題や技術的課題）を解決するポテンシャルを秘めているか説明します。
+
+質問は一つずつ、親しみやすく、考えやすい形で行ってください。まず最初の質問をしてください。`;
+  } else {
+    return `あなたは未踏IT人材発掘・育成事業の申請書作成を支援するAIアシスタントです。
+ユーザーは「逆算」アプローチ（イシューから始める）を選択しました。
+
+以下の流れでユーザーとの対話を進めてください：
+
+1. まず、解決したい課題があるか、課題を探しているかを尋ねる
+2. 解決したい課題がある場合：
+   - なぜその課題は解決されていないのか
+   - あなたがそれを解決できる理由は何か
+   を段階的に尋ねる
+3. 課題を探している場合：
+   - 今、世の中で必要とされている課題を一緒に考える
+   - ユーザーの興味や得意分野から、取り組むべき課題を見つける
+
+最終的に、「なぜあなたがやるのか？」「あなたである必要があるのか？」「未踏（つまり政府）があなたに投資する必然性は何か？」という問いに対する答えを導き出します。
+
+質問は一つずつ、親しみやすく、考えやすい形で行ってください。まず最初の質問をしてください。`;
+  }
+}
+
+/**
+ * Generate form data from esquisse conversation
+ */
+async function generateFormDataFromEsquisse(env: Env, session: EsquisseSession): Promise<Partial<SectionData>> {
+  // Compile conversation history
+  const conversationSummary = session.messages
+    .filter(m => m.role !== 'system')
+    .map(m => `${m.role === 'ai' ? 'AI' : 'あなた'}: ${m.content}`)
+    .join('\n\n');
+
+  const prompt = `以下は、未踏IT人材発掘・育成事業の申請書作成のための対話の記録です。
+この対話の内容を基に、申請書の各セクションの内容を生成してください。
+
+対話記録：
+${conversationSummary}
+
+以下のJSON形式で、各セクションの内容を生成してください。対話で触れられていない部分は空文字列にしてください：
+
+{
+  "projectName": "プロジェクト名",
+  "section1_1": "概要",
+  "section1_2_1": "社会的背景",
+  "section1_2_2": "技術的背景",
+  "section1_2_3": "私的背景",
+  "section1_4": "提案の目標",
+  "section2_1": "斬新さ(未踏性)の主張",
+  "section2_2": "期待される効果"
+}
+
+JSONのみを返してください。他の説明は不要です。`;
+
+  const messages = [
+    { role: 'user', content: prompt }
+  ];
+
+  const response = await callOpenRouter(env, messages);
+  
+  // Extract JSON from response
+  const jsonMatch = response.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('Failed to parse AI response');
+  }
+
+  const formData = JSON.parse(jsonMatch[0]);
+  return formData;
 }
 
 /**
@@ -600,6 +743,217 @@ function getHTMLPage(submissionDeadline: string): string {
             border-radius: 10px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             padding: 40px;
+        }
+        
+        .split-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .esquisse-panel {
+            flex: 0 0 400px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+            position: sticky;
+            top: 80px;
+            border: 2px solid #667eea;
+        }
+        
+        .esquisse-panel h3 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .esquisse-approach-selection {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .approach-btn {
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: white;
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+        
+        .approach-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .approach-btn.selected {
+            background: #667eea;
+            color: white;
+        }
+        
+        .esquisse-conversation {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 15px;
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }
+        
+        .esquisse-message {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .esquisse-message.ai {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .esquisse-message.user {
+            background: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+            margin-left: 20px;
+        }
+        
+        .esquisse-message.system {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            font-style: italic;
+        }
+        
+        .esquisse-input-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .esquisse-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        
+        .esquisse-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .esquisse-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .esquisse-btn {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            color: #667eea;
+            flex: 1;
+        }
+        
+        .esquisse-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .esquisse-btn.primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .esquisse-btn.primary:hover {
+            background: #5568d3;
+        }
+        
+        .esquisse-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .esquisse-status {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .form-panel {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .esquisse-toggle-btn {
+            position: fixed;
+            left: 20px;
+            bottom: 80px;
+            width: 50px;
+            height: 50px;
+            background: #667eea;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s;
+            color: white;
+            font-size: 24px;
+        }
+        
+        .esquisse-toggle-btn:hover {
+            background: #5568d3;
+            transform: scale(1.1);
+        }
+        
+        .esquisse-panel.hidden {
+            display: none;
+        }
+        
+        @media (max-width: 1024px) {
+            .split-layout {
+                flex-direction: column;
+            }
+            
+            .esquisse-panel {
+                flex: 1;
+                width: 100%;
+                max-height: 400px;
+                position: relative;
+                top: 0;
+            }
+            
+            .form-panel {
+                width: 100%;
+            }
         }
         
         .tab-content {
@@ -1237,10 +1591,57 @@ function getHTMLPage(submissionDeadline: string): string {
             
             <div class="info-box">
                 <p><strong>使い方：</strong></p>
-                <p>各セクションに内容を記入して「ダウンロード」ボタンをクリックし、LaTeXまたはPDF形式を選択すると、ファイルがダウンロードされます。</p>
+                <p>左側のエスキース（思考の過程）で質問に答えながらアイデアを具現化し、完成したら「資料に反映する」ボタンで右側のフォームに内容を反映できます。各セクションに内容を記入して「ダウンロード」ボタンをクリックし、LaTeXまたはPDF形式を選択すると、ファイルがダウンロードされます。</p>
             </div>
             
-            <form id="applicationForm">
+            <div class="split-layout">
+                <!-- Esquisse Panel (Left Side) -->
+                <div class="esquisse-panel" id="esquissePanel">
+                    <h3>💭 エスキース（思考の過程）</h3>
+                    
+                    <!-- Approach Selection -->
+                    <div id="approachSelection" class="esquisse-approach-selection">
+                        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+                            思考の連鎖を始めるアプローチを選択してください：
+                        </p>
+                        <button type="button" class="approach-btn" onclick="startEsquisse('forward')">
+                            <strong>🔼 順算</strong><br>
+                            <span style="font-size: 12px; font-weight: normal;">内発的動機から始める</span>
+                        </button>
+                        <button type="button" class="approach-btn" onclick="startEsquisse('backward')">
+                            <strong>🔽 逆算</strong><br>
+                            <span style="font-size: 12px; font-weight: normal;">イシュー（課題）から始める</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Conversation Area -->
+                    <div id="esquisseConversation" class="esquisse-conversation" style="display: none;">
+                        <!-- Messages will be added here dynamically -->
+                    </div>
+                    
+                    <!-- Input Area -->
+                    <div id="esquisseInputArea" class="esquisse-input-area" style="display: none;">
+                        <textarea 
+                            id="esquisseInput" 
+                            class="esquisse-input" 
+                            placeholder="ここに回答を入力してください..."
+                            disabled
+                        ></textarea>
+                        <div class="esquisse-actions">
+                            <button type="button" class="esquisse-btn" onclick="sendEsquisseAnswer()" id="esquisseSendBtn" disabled>
+                                送信
+                            </button>
+                            <button type="button" class="esquisse-btn primary" onclick="applyEsquisseToForm()" id="esquisseApplyBtn" style="display: none;">
+                                資料に反映する
+                            </button>
+                        </div>
+                        <div class="esquisse-status" id="esquisseStatus"></div>
+                    </div>
+                </div>
+                
+                <!-- Form Panel (Right Side) -->
+                <div class="form-panel">
+                    <form id="applicationForm">
                 <!-- Project Name and Applicant -->
                 <div class="form-group">
                     <label>プロジェクト名</label>
@@ -1386,6 +1787,8 @@ function getHTMLPage(submissionDeadline: string): string {
             <div class="error" id="error">
                 <p class="error-message" id="errorMessage"></p>
             </div>
+                </div><!-- End form-panel -->
+            </div><!-- End split-layout -->
         </div>
         
         <!-- Examples Tab -->
@@ -2513,6 +2916,216 @@ function getHTMLPage(submissionDeadline: string): string {
             alert(window.PREVIEW_COMING_SOON_MSG);
         }
         
+        // ===== Esquisse Feature =====
+        let esquisseSession = null;
+        let esquisseApproach = null;
+        
+        // Start esquisse conversation
+        async function startEsquisse(approach) {
+            esquisseApproach = approach;
+            
+            // Hide approach selection
+            document.getElementById('approachSelection').style.display = 'none';
+            
+            // Show conversation and input area
+            document.getElementById('esquisseConversation').style.display = 'flex';
+            document.getElementById('esquisseInputArea').style.display = 'flex';
+            
+            // Enable input
+            document.getElementById('esquisseInput').disabled = false;
+            document.getElementById('esquisseSendBtn').disabled = false;
+            
+            // Update status
+            document.getElementById('esquisseStatus').textContent = '考えを整理しています...';
+            
+            try {
+                const response = await fetch('/api/esquisse/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': sessionToken ? 'Bearer ' + sessionToken : ''
+                    },
+                    body: JSON.stringify({ approach })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to start esquisse');
+                }
+                
+                const data = await response.json();
+                esquisseSession = data.session;
+                
+                // Display the first question
+                addEsquisseMessage('ai', data.question);
+                document.getElementById('esquisseStatus').textContent = '';
+            } catch (error) {
+                console.error('Failed to start esquisse:', error);
+                showToast('エスキースの開始に失敗しました / Failed to start esquisse', 'error');
+                document.getElementById('esquisseStatus').textContent = 'エラーが発生しました';
+            }
+        }
+        
+        // Send esquisse answer
+        async function sendEsquisseAnswer() {
+            const input = document.getElementById('esquisseInput');
+            const answer = input.value.trim();
+            
+            if (!answer) {
+                showToast('回答を入力してください / Please enter your answer', 'warning');
+                return;
+            }
+            
+            if (!esquisseSession) {
+                showToast('セッションが見つかりません / Session not found', 'error');
+                return;
+            }
+            
+            // Add user message to conversation
+            addEsquisseMessage('user', answer);
+            
+            // Clear input
+            input.value = '';
+            
+            // Disable input while processing
+            input.disabled = true;
+            document.getElementById('esquisseSendBtn').disabled = true;
+            document.getElementById('esquisseStatus').textContent = 'AIが考えています...';
+            
+            try {
+                const response = await fetch('/api/esquisse/answer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': sessionToken ? 'Bearer ' + sessionToken : ''
+                    },
+                    body: JSON.stringify({
+                        sessionId: esquisseSession.id || esquisseSession.userId,
+                        answer: answer
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to send answer');
+                }
+                
+                const data = await response.json();
+                esquisseSession = data.session;
+                
+                // Display AI response
+                if (data.question) {
+                    addEsquisseMessage('ai', data.question);
+                }
+                
+                if (data.completed) {
+                    // Show system message
+                    addEsquisseMessage('system', 'エスキースが完成しました！「資料に反映する」ボタンをクリックして、フォームに内容を反映してください。');
+                    
+                    // Show apply button
+                    document.getElementById('esquisseApplyBtn').style.display = 'block';
+                    
+                    // Hide send button
+                    document.getElementById('esquisseSendBtn').style.display = 'none';
+                    input.disabled = true;
+                    document.getElementById('esquisseStatus').textContent = '完了';
+                } else {
+                    // Re-enable input
+                    input.disabled = false;
+                    document.getElementById('esquisseSendBtn').disabled = false;
+                    document.getElementById('esquisseStatus').textContent = '';
+                }
+            } catch (error) {
+                console.error('Failed to send answer:', error);
+                showToast('回答の送信に失敗しました / Failed to send answer', 'error');
+                input.disabled = false;
+                document.getElementById('esquisseSendBtn').disabled = false;
+                document.getElementById('esquisseStatus').textContent = 'エラーが発生しました';
+            }
+        }
+        
+        // Add message to esquisse conversation
+        function addEsquisseMessage(role, content) {
+            const conversation = document.getElementById('esquisseConversation');
+            const message = document.createElement('div');
+            message.className = 'esquisse-message ' + role;
+            message.textContent = content;
+            conversation.appendChild(message);
+            
+            // Scroll to bottom
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+        
+        // Apply esquisse to form
+        async function applyEsquisseToForm() {
+            if (!esquisseSession) {
+                showToast('セッションが見つかりません / Session not found', 'error');
+                return;
+            }
+            
+            document.getElementById('esquisseStatus').textContent = 'フォームに反映しています...';
+            document.getElementById('esquisseApplyBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/api/esquisse/apply', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': sessionToken ? 'Bearer ' + sessionToken : ''
+                    },
+                    body: JSON.stringify({
+                        sessionId: esquisseSession.id || esquisseSession.userId
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to apply esquisse');
+                }
+                
+                const data = await response.json();
+                
+                // Apply the generated content to form fields
+                if (data.formData) {
+                    Object.keys(data.formData).forEach(key => {
+                        const field = document.getElementById(key);
+                        if (field && data.formData[key]) {
+                            field.value = data.formData[key];
+                            // Also update localStorage
+                            localStorage.setItem(key, data.formData[key]);
+                        }
+                    });
+                    
+                    showToast('フォームに内容を反映しました！ / Content applied to form!', 'success');
+                    
+                    // Mark form as modified
+                    if (currentUser && sessionToken) {
+                        markFormAsModified();
+                    }
+                }
+                
+                document.getElementById('esquisseStatus').textContent = '完了';
+                document.getElementById('esquisseApplyBtn').disabled = false;
+            } catch (error) {
+                console.error('Failed to apply esquisse:', error);
+                showToast('フォームへの反映に失敗しました / Failed to apply to form', 'error');
+                document.getElementById('esquisseStatus').textContent = 'エラーが発生しました';
+                document.getElementById('esquisseApplyBtn').disabled = false;
+            }
+        }
+        
+        // Allow Enter key to send answer (Shift+Enter for new line)
+        document.addEventListener('DOMContentLoaded', function() {
+            const esquisseInput = document.getElementById('esquisseInput');
+            if (esquisseInput) {
+                esquisseInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (!this.disabled && !document.getElementById('esquisseSendBtn').disabled) {
+                            sendEsquisseAnswer();
+                        }
+                    }
+                });
+            }
+        });
+        
         // Auto-save to localStorage
         const inputs = document.querySelectorAll('input, textarea');
         inputs.forEach(input => {
@@ -3025,6 +3638,231 @@ export default {
         console.error('Load draft error:', error);
         return new Response(JSON.stringify({ error: 'Failed to load draft' }), {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Esquisse endpoints
+    
+    // Start esquisse conversation
+    if (url.pathname === '/api/esquisse/start' && request.method === 'POST') {
+      try {
+        const { approach } = await request.json() as any;
+        
+        if (!approach || (approach !== 'forward' && approach !== 'backward')) {
+          return new Response(JSON.stringify({ error: 'Invalid approach' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Get user (optional - esquisse can work without login but won't save)
+        const token = getAuthToken(request);
+        let userId = 'anonymous';
+        
+        if (token) {
+          const user = await verifySession(env, token);
+          if (user) {
+            userId = user.id;
+          }
+        }
+        
+        // Initialize esquisse session
+        const session: EsquisseSession = {
+          userId,
+          approach,
+          messages: [],
+          currentStep: 0,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        // Get initial prompt and first question from AI
+        const systemPrompt = getInitialPrompt(approach);
+        const aiResponse = await callOpenRouter(env, [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: 'はじめましょう。最初の質問をお願いします。' }
+        ]);
+        
+        // Add system message
+        session.messages.push({
+          role: 'system',
+          content: systemPrompt,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Add AI question
+        session.messages.push({
+          role: 'ai',
+          content: aiResponse,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Save session to KV
+        await env.MEMORIES_KV.put(
+          `esquisse:${userId}`,
+          JSON.stringify(session),
+          { expirationTtl: 86400 } // 24 hours
+        );
+        
+        return new Response(JSON.stringify({
+          session,
+          question: aiResponse
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Start esquisse error:', error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to start esquisse',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Process esquisse answer
+    if (url.pathname === '/api/esquisse/answer' && request.method === 'POST') {
+      try {
+        const { sessionId, answer } = await request.json() as any;
+        
+        if (!sessionId || !answer) {
+          return new Response(JSON.stringify({ error: 'Missing sessionId or answer' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Load session from KV
+        const sessionData = await env.MEMORIES_KV.get(`esquisse:${sessionId}`);
+        if (!sessionData) {
+          return new Response(JSON.stringify({ error: 'Session not found' }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const session: EsquisseSession = JSON.parse(sessionData);
+        
+        // Add user answer to messages
+        session.messages.push({
+          role: 'user',
+          content: answer,
+          timestamp: new Date().toISOString()
+        });
+        
+        session.currentStep += 1;
+        
+        // Build conversation history for AI
+        const conversationHistory = session.messages.map(m => ({
+          role: m.role === 'ai' ? 'assistant' : m.role === 'system' ? 'system' : 'user',
+          content: m.content
+        }));
+        
+        // Determine if conversation should end (after 5-8 exchanges)
+        const userMessageCount = session.messages.filter(m => m.role === 'user').length;
+        const shouldComplete = userMessageCount >= 5;
+        
+        if (shouldComplete) {
+          // Add completion instruction
+          conversationHistory.push({
+            role: 'user',
+            content: 'これまでの対話を踏まえて、簡潔にまとめてください。そして、対話を完了させましょう。'
+          });
+        } else {
+          // Ask for next question
+          conversationHistory.push({
+            role: 'user',
+            content: '次の質問をお願いします。'
+          });
+        }
+        
+        // Get AI response
+        const aiResponse = await callOpenRouter(env, conversationHistory);
+        
+        // Add AI response to messages
+        session.messages.push({
+          role: 'ai',
+          content: aiResponse,
+          timestamp: new Date().toISOString()
+        });
+        
+        session.completed = shouldComplete;
+        session.updatedAt = new Date().toISOString();
+        
+        // Save updated session
+        await env.MEMORIES_KV.put(
+          `esquisse:${sessionId}`,
+          JSON.stringify(session),
+          { expirationTtl: 86400 }
+        );
+        
+        return new Response(JSON.stringify({
+          session,
+          question: shouldComplete ? null : aiResponse,
+          completed: shouldComplete
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Process answer error:', error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to process answer',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Apply esquisse to form
+    if (url.pathname === '/api/esquisse/apply' && request.method === 'POST') {
+      try {
+        const { sessionId } = await request.json() as any;
+        
+        if (!sessionId) {
+          return new Response(JSON.stringify({ error: 'Missing sessionId' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Load session from KV
+        const sessionData = await env.MEMORIES_KV.get(`esquisse:${sessionId}`);
+        if (!sessionData) {
+          return new Response(JSON.stringify({ error: 'Session not found' }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const session: EsquisseSession = JSON.parse(sessionData);
+        
+        if (!session.completed) {
+          return new Response(JSON.stringify({ error: 'Esquisse not completed yet' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Generate form data from conversation
+        const formData = await generateFormDataFromEsquisse(env, session);
+        
+        return new Response(JSON.stringify({ formData }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Apply esquisse error:', error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to apply esquisse',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
