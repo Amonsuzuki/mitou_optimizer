@@ -78,6 +78,16 @@ function generateSectionsData() {
     });
   }
   
+  // Sort projects by category (directory) first, then by name
+  projects.sort((a, b) => {
+    if (a.category !== b.category) {
+      // 'open' comes before 'closed'
+      return a.category === 'open' ? -1 : 1;
+    }
+    // Within same category, sort alphabetically by name
+    return a.name.localeCompare(b.name);
+  });
+  
   return {
     generated: new Date().toISOString(),
     sectionTitles: SECTION_TITLES,
