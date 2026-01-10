@@ -507,13 +507,13 @@ function getHTMLPage(submissionDeadline: string): string {
         .download-menu {
             display: none;
             position: absolute;
-            bottom: 100%;
+            top: 100%;
             right: 0;
             background: white;
             border: 2px solid #667eea;
             border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            margin-bottom: 5px;
+            margin-top: 5px;
             z-index: 1000;
             min-width: 180px;
         }
