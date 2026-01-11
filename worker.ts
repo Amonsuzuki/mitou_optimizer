@@ -381,8 +381,10 @@ JSONのみを返してください。他の説明は不要です。`;
  * Helper functions for authentication and session management with Supabase
  */
 
-// Create Supabase client helper
-// When using the service role key, the client automatically bypasses RLS
+/**
+ * Create Supabase client helper
+ * When using the service role key, the client automatically bypasses RLS
+ */
 function getSupabaseClient(env: Env) {
   return createClient(env.SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
     auth: {
@@ -3774,7 +3776,8 @@ export default {
         
         if (error) {
           console.error('Failed to load draft from Supabase:', error);
-          return new Response(JSON.stringify({ error: 'Failed to load draft' }), {
+          const errorMessage = error.message || 'Failed to load draft';
+          return new Response(JSON.stringify({ error: errorMessage }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
@@ -3885,7 +3888,7 @@ export default {
         }
         
         // Get the first (and should be only) result
-        const sessionData = data && data.length > 0 ? data[0] : null;
+        const sessionData = data?.[0] ?? null;
         
         if (!sessionData) {
           console.error('No session data returned after upsert');
@@ -4044,7 +4047,7 @@ export default {
         }
         
         // Get the first (and should be only) result
-        const sessionDataUpdated = updatedData && updatedData.length > 0 ? updatedData[0] : null;
+        const sessionDataUpdated = updatedData?.[0] ?? null;
         
         if (!sessionDataUpdated) {
           console.error('No session data returned after update');
