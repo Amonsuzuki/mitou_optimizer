@@ -1,3 +1,1 @@
-オープンソースのソフトウェアとして 出すことを検討している。またソフトウェアのデザインは提
-案者の博士研究 の一環として行われ、New Interfaces for Musical ExpressionやUIST、CHIといった国
-際学会 やComputer Music Journalといった論文誌 での発表を目指す。
+(このセクションの内容は抽出されませんでした)
