@@ -3327,6 +3327,8 @@ function getHTMLPage(submissionDeadline: string): string {
         
         // Auto-save to localStorage
         const inputs = document.querySelectorAll('input, textarea');
+        const resizedTextareas = new Set();
+        
         inputs.forEach(input => {
             // Load saved value
             const saved = localStorage.getItem(input.id);
@@ -3335,6 +3337,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 // Auto-resize if it's a textarea
                 if (input.tagName.toUpperCase() === 'TEXTAREA') {
                     autoResizeTextarea(input);
+                    resizedTextareas.add(input);
                 }
             }
             
@@ -3352,9 +3355,11 @@ function getHTMLPage(submissionDeadline: string): string {
             });
         });
         
-        // Initial resize for all textareas
+        // Initial resize for textareas that weren't already resized
         document.querySelectorAll('textarea').forEach(textarea => {
-            autoResizeTextarea(textarea);
+            if (!resizedTextareas.has(textarea)) {
+                autoResizeTextarea(textarea);
+            }
         });
     </script>
 </body>
