@@ -24,18 +24,33 @@ const SECTION_PATTERNS = [
  */
 function splitIntoSections(text, filename) {
   const sections = {};
-  const lines = text.split('\n');
   
   // Initialize sections
   for (let i = 1; i <= 8; i++) {
     sections[i] = '';
   }
   
+  // First, try to split the text by section markers
+  // Some files have all content on one line with section markers embedded
+  // We need to insert line breaks before section markers
+  let processedText = text;
+  
+  // Insert line breaks before section headers (1. through 8.)
+  for (let i = 1; i <= 8; i++) {
+    // Match patterns like "1.   何" or "2.   斬" with spaces
+    const regex = new RegExp(`(${i}\\.\\s+[^\\.\\d])`, 'g');
+    processedText = processedText.replace(regex, '\n$1');
+  }
+  
+  const lines = processedText.split('\n');
+  
   let currentSection = 0;
   let sectionContent = [];
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
+    
+    if (!line) continue; // Skip empty lines
     
     // Normalize spaces (convert full-width spaces to regular spaces and collapse multiple spaces)
     const normalizedLine = line.replace(/[\s　]+/g, ' ');

@@ -1,1 +1,6 @@
-(このセクションの内容は抽出されませんでした)
+3.  [5] Panagiotis Antonopoulos, Arvind Arasu, Kunal D Singh, et al. 2020. Azure SQL Database Always  Encrypted. In Proceedings of the 2020 ACM SIGMOD International Conference on Management of Data.  1511–152
+5.  [6] Taehoon Kim, Joongun Park, Jaewook Woo, Seungheun Jeon, and Jaehyuk Huh. 2019. ShieldStore:  Shielded In-memory Key-value Storage with SGX. In Proceedings of the European Conference on  Computer Systems (EuroSys’19). 1–1
+5.  [7] Christian Priebe, Kapil Vaswani, and Manuel Costa. 201
+8. EnclaveDB: A Secure Database Using  SGX. In Proceedings of the IEEE Symposium on Security and Privacy (SP’18). IEEE, 264–27
+8.  [8] Tu, S., Zheng, W., Kohler, E., Liskov, B. and Madden, S.: Speedy transactions in multicore in-memory  databases, SOSP, pp. 18–32 (2013).  [9] Y. Mao, E. Kohler, and R. Morris. Cache craftiness for fast multicore key-value storage. In Eurosys,  201
+2.  8
