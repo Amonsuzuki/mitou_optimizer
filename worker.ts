@@ -2833,7 +2833,7 @@ function getHTMLPage(submissionDeadline: string): string {
                             if (field && draft.data[key]) {
                                 field.value = draft.data[key];
                                 // Auto-resize if it's a textarea
-                                if (field.tagName === 'TEXTAREA') {
+                                if (field.tagName.toUpperCase() === 'TEXTAREA') {
                                     autoResizeTextarea(field);
                                 }
                                 // Update localStorage as well
@@ -3264,7 +3264,7 @@ function getHTMLPage(submissionDeadline: string): string {
                         if (field && data.formData[key]) {
                             field.value = data.formData[key];
                             // Auto-resize if it's a textarea
-                            if (field.tagName === 'TEXTAREA') {
+                            if (field.tagName.toUpperCase() === 'TEXTAREA') {
                                 autoResizeTextarea(field);
                             }
                             // Also update localStorage
@@ -3315,6 +3315,10 @@ function getHTMLPage(submissionDeadline: string): string {
         
         // Auto-resize textarea function
         function autoResizeTextarea(textarea) {
+            // Validate input
+            if (!textarea || textarea.tagName.toUpperCase() !== 'TEXTAREA') {
+                return;
+            }
             // Reset height to auto to get the correct scrollHeight
             textarea.style.height = 'auto';
             // Set the height to match the content
@@ -3329,7 +3333,7 @@ function getHTMLPage(submissionDeadline: string): string {
             if (saved) {
                 input.value = saved;
                 // Auto-resize if it's a textarea
-                if (input.tagName === 'TEXTAREA') {
+                if (input.tagName.toUpperCase() === 'TEXTAREA') {
                     autoResizeTextarea(input);
                 }
             }
@@ -3338,7 +3342,7 @@ function getHTMLPage(submissionDeadline: string): string {
             input.addEventListener('input', function() {
                 localStorage.setItem(this.id, this.value);
                 // Auto-resize if it's a textarea
-                if (this.tagName === 'TEXTAREA') {
+                if (this.tagName.toUpperCase() === 'TEXTAREA') {
                     autoResizeTextarea(this);
                 }
                 // Mark form as modified when any input changes
