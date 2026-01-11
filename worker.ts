@@ -3770,16 +3770,9 @@ export default {
           .from('drafts')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
         if (error) {
-          // If no draft found (404), return empty data instead of error
-          if (error.code === 'PGRST116') {
-            return new Response(JSON.stringify({ data: null }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          }
-          
           console.error('Failed to load draft from Supabase:', error);
           return new Response(JSON.stringify({ error: 'Failed to load draft' }), {
             status: 500,
@@ -3966,10 +3959,18 @@ export default {
           .from('esquisse_sessions')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
-        if (fetchError || !sessionData) {
+        if (fetchError) {
           console.error('Failed to load esquisse session:', fetchError);
+          return new Response(JSON.stringify({ error: 'Failed to load session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        if (!sessionData) {
+          console.error('Esquisse session not found for user');
           return new Response(JSON.stringify({ error: 'Session not found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -4118,10 +4119,18 @@ export default {
           .from('esquisse_sessions')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
-        if (fetchError || !sessionData) {
+        if (fetchError) {
           console.error('Failed to load esquisse session:', fetchError);
+          return new Response(JSON.stringify({ error: 'Failed to load session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        if (!sessionData) {
+          console.error('Esquisse session not found for user');
           return new Response(JSON.stringify({ error: 'Session not found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
