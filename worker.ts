@@ -3296,10 +3296,13 @@ function getHTMLPage(submissionDeadline: string): string {
                 });
                 const approach = session.approach === 'forward' ? '順算' : '逆算';
                 
+                // Escape HTML to prevent XSS
+                const escapedSessionName = escapeHtml(session.sessionName);
+                
                 return `
-                    <div class="session-item ${isActive ? 'active' : ''}" onclick="resumeEsquisseSession('${session.sessionName}')">
+                    <div class="session-item ${isActive ? 'active' : ''}" onclick="resumeEsquisseSession('${escapedSessionName}')">
                         <div class="session-info">
-                            <div class="session-name">${session.sessionName}</div>
+                            <div class="session-name">${escapedSessionName}</div>
                             <div class="session-meta">${approach} | ${date}</div>
                         </div>
                         <div class="session-status ${statusClass}">${statusText}</div>
@@ -4239,10 +4242,18 @@ export default {
         
         // Deactivate all previous sessions for this user
         const supabase = getSupabaseClient(env);
-        await supabase
+        const { error: deactivateError } = await supabase
           .from('esquisse_sessions')
           .update({ is_active: false })
           .eq('user_id', user.id);
+        
+        if (deactivateError) {
+          console.error('Failed to deactivate previous sessions:', deactivateError);
+          return new Response(JSON.stringify({ error: 'Failed to prepare new session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
         
         // Save new session to Supabase
         const { data, error } = await supabase
@@ -4428,17 +4439,35 @@ export default {
           });
         }
         
-        // Deactivate all other sessions and activate this one
-        await supabase
+        // Atomically switch active session using a SQL function
+        // First, deactivate all sessions for this user
+        const { error: deactivateError } = await supabase
           .from('esquisse_sessions')
           .update({ is_active: false })
           .eq('user_id', user.id);
         
-        await supabase
+        if (deactivateError) {
+          console.error('Failed to deactivate sessions:', deactivateError);
+          return new Response(JSON.stringify({ error: 'Failed to update session status' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Then, activate the specified session
+        const { error: activateError } = await supabase
           .from('esquisse_sessions')
           .update({ is_active: true })
           .eq('user_id', user.id)
           .eq('session_name', sessionName);
+        
+        if (activateError) {
+          console.error('Failed to activate session:', activateError);
+          return new Response(JSON.stringify({ error: 'Failed to activate session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
         
         // Build session response
         const session: EsquisseSession = {
