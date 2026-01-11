@@ -853,6 +853,104 @@ function getHTMLPage(submissionDeadline: string): string {
             color: white;
         }
         
+        .esquisse-session-selector {
+            margin-bottom: 15px;
+        }
+        
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .session-header h4 {
+            margin: 0;
+            font-size: 14px;
+            color: #667eea;
+        }
+        
+        .new-session-btn {
+            padding: 6px 12px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            background: white;
+            color: #667eea;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .new-session-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .session-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        .session-item {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .session-item:last-child {
+            border-bottom: none;
+        }
+        
+        .session-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .session-item.active {
+            background: #e3f2fd;
+            border-left: 4px solid #667eea;
+        }
+        
+        .session-info {
+            flex: 1;
+        }
+        
+        .session-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        .session-meta {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
+        
+        .session-status {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .session-status.completed {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .session-status.in-progress {
+            background: #ff9800;
+            color: white;
+        }
+        
         .esquisse-conversation {
             display: flex;
             flex-direction: column;
@@ -1648,6 +1746,19 @@ function getHTMLPage(submissionDeadline: string): string {
                 <!-- Esquisse Panel (Left Side) -->
                 <div class="esquisse-panel" id="esquissePanel">
                     <h3>💭 エスキース（思考の過程）</h3>
+                    
+                    <!-- Session Selector -->
+                    <div id="sessionSelector" class="esquisse-session-selector" style="display: none;">
+                        <div class="session-header">
+                            <h4>📋 セッション</h4>
+                            <button type="button" class="new-session-btn" onclick="showNewSessionDialog()">
+                                + 新規
+                            </button>
+                        </div>
+                        <div class="session-list" id="sessionList">
+                            <!-- Sessions will be loaded here -->
+                        </div>
+                    </div>
                     
                     <!-- Approach Selection -->
                     <div id="approachSelection" class="esquisse-approach-selection">
@@ -2669,6 +2780,7 @@ function getHTMLPage(submissionDeadline: string): string {
                     showUserInfo(user);
                     enableSaveButton();
                     await loadDraft();
+                    await loadEsquisseSessions();
                 } else {
                     localStorage.removeItem('sessionToken');
                     showLoginButton();
@@ -2925,6 +3037,7 @@ function getHTMLPage(submissionDeadline: string): string {
                         showUserInfo(currentUser);
                         enableSaveButton();
                         await loadDraft();
+                        await loadEsquisseSessions();
                         showToast('ログインしました。 / Logged in successfully.', 'success');
                     } else {
                         throw new Error('Authentication failed');
@@ -3126,6 +3239,157 @@ function getHTMLPage(submissionDeadline: string): string {
         // ===== Esquisse Feature =====
         let esquisseSession = null;
         let esquisseApproach = null;
+        let esquisseSessions = [];
+        
+        // Load esquisse sessions
+        async function loadEsquisseSessions() {
+            if (!sessionToken) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/esquisse/list', {
+                    headers: {
+                        'Authorization': 'Bearer ' + sessionToken
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load sessions');
+                }
+                
+                const data = await response.json();
+                esquisseSessions = data.sessions || [];
+                
+                // Update UI
+                updateSessionList();
+                
+                // Show session selector if user has sessions
+                if (esquisseSessions.length > 0) {
+                    document.getElementById('sessionSelector').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Failed to load esquisse sessions:', error);
+            }
+        }
+        
+        // Update session list UI
+        function updateSessionList() {
+            const sessionList = document.getElementById('sessionList');
+            if (!sessionList) return;
+            
+            if (esquisseSessions.length === 0) {
+                sessionList.innerHTML = '<div style="padding: 15px; text-align: center; color: #999; font-size: 12px;">セッションがありません</div>';
+                return;
+            }
+            
+            sessionList.innerHTML = esquisseSessions.map(session => {
+                const isActive = session.isActive;
+                const statusClass = session.completed ? 'completed' : 'in-progress';
+                const statusText = session.completed ? '完了' : '進行中';
+                const date = new Date(session.updatedAt).toLocaleDateString('ja-JP', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const approach = session.approach === 'forward' ? '順算' : '逆算';
+                
+                return `
+                    <div class="session-item ${isActive ? 'active' : ''}" onclick="resumeEsquisseSession('${session.sessionName}')">
+                        <div class="session-info">
+                            <div class="session-name">${session.sessionName}</div>
+                            <div class="session-meta">${approach} | ${date}</div>
+                        </div>
+                        <div class="session-status ${statusClass}">${statusText}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Show new session dialog (which is the approach selection)
+        function showNewSessionDialog() {
+            // Hide session selector
+            document.getElementById('sessionSelector').style.display = 'none';
+            
+            // Show approach selection
+            document.getElementById('approachSelection').style.display = 'block';
+            
+            // Hide conversation and input
+            document.getElementById('esquisseConversation').style.display = 'none';
+            document.getElementById('esquisseInputArea').style.display = 'none';
+            
+            // Clear current session
+            esquisseSession = null;
+        }
+        
+        // Resume an existing esquisse session
+        async function resumeEsquisseSession(sessionName) {
+            if (!sessionToken) {
+                showToast('ログインが必要です / Please login', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/esquisse/resume', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + sessionToken
+                    },
+                    body: JSON.stringify({ sessionName })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to resume session');
+                }
+                
+                const data = await response.json();
+                esquisseSession = data.session;
+                
+                // Hide approach selection and session selector
+                document.getElementById('approachSelection').style.display = 'none';
+                document.getElementById('sessionSelector').style.display = 'block';
+                
+                // Show conversation and input area
+                document.getElementById('esquisseConversation').style.display = 'flex';
+                document.getElementById('esquisseInputArea').style.display = 'flex';
+                
+                // Clear and reload messages
+                const conversationDiv = document.getElementById('esquisseConversation');
+                conversationDiv.innerHTML = '';
+                
+                // Display all messages except system messages
+                esquisseSession.messages.forEach(msg => {
+                    if (msg.role !== 'system') {
+                        addEsquisseMessage(msg.role, msg.content);
+                    }
+                });
+                
+                // Update UI based on completion status
+                if (esquisseSession.completed) {
+                    document.getElementById('esquisseInput').disabled = true;
+                    document.getElementById('esquisseSendBtn').style.display = 'none';
+                    document.getElementById('esquisseApplyBtn').style.display = 'block';
+                    document.getElementById('esquisseStatus').textContent = '完了';
+                } else {
+                    document.getElementById('esquisseInput').disabled = false;
+                    document.getElementById('esquisseSendBtn').disabled = false;
+                    document.getElementById('esquisseSendBtn').style.display = 'block';
+                    document.getElementById('esquisseApplyBtn').style.display = 'none';
+                    document.getElementById('esquisseStatus').textContent = '';
+                }
+                
+                // Reload session list to update active status
+                await loadEsquisseSessions();
+                
+                showToast(`セッション "${sessionName}" を再開しました`, 'success');
+            } catch (error) {
+                console.error('Failed to resume session:', error);
+                showToast('セッションの再開に失敗しました / Failed to resume session', 'error');
+            }
+        }
         
         // Start esquisse conversation
         async function startEsquisse(approach) {
@@ -3140,13 +3404,22 @@ function getHTMLPage(submissionDeadline: string): string {
             // Hide approach selection
             document.getElementById('approachSelection').style.display = 'none';
             
+            // Clear conversation
+            const conversationDiv = document.getElementById('esquisseConversation');
+            conversationDiv.innerHTML = '';
+            
             // Show conversation and input area
             document.getElementById('esquisseConversation').style.display = 'flex';
             document.getElementById('esquisseInputArea').style.display = 'flex';
             
+            // Show session selector
+            document.getElementById('sessionSelector').style.display = 'block';
+            
             // Enable input
             document.getElementById('esquisseInput').disabled = false;
             document.getElementById('esquisseSendBtn').disabled = false;
+            document.getElementById('esquisseSendBtn').style.display = 'block';
+            document.getElementById('esquisseApplyBtn').style.display = 'none';
             
             // Update status
             document.getElementById('esquisseStatus').textContent = '考えを整理しています...';
@@ -3173,6 +3446,11 @@ function getHTMLPage(submissionDeadline: string): string {
                 // Display the first question
                 addEsquisseMessage('ai', data.question);
                 document.getElementById('esquisseStatus').textContent = '';
+                
+                // Reload sessions to show the new session
+                await loadEsquisseSessions();
+                
+                showToast(`新しいセッション "${esquisseSession.sessionName}" を開始しました`, 'success');
             } catch (error) {
                 console.error('Failed to start esquisse:', error);
                 const errorMsg = error.message || 'エスキースの開始に失敗しました / Failed to start esquisse';
@@ -3183,6 +3461,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 document.getElementById('approachSelection').style.display = 'block';
                 document.getElementById('esquisseConversation').style.display = 'none';
                 document.getElementById('esquisseInputArea').style.display = 'none';
+                document.getElementById('sessionSelector').style.display = esquisseSessions.length > 0 ? 'block' : 'none';
             }
         }
         
