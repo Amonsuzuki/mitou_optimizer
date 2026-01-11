@@ -26,6 +26,15 @@ The Esquisse feature helps users develop and articulate their project ideas thro
 
 After completing the conversation, users can click "資料に反映する" to automatically populate the application form with content generated from their responses.
 
+#### Multi-Session Support
+
+Users can create and manage multiple esquisse sessions:
+- Create multiple independent esquisse conversations (esquisse, esquisse2, etc.)
+- View a list of all past sessions with their status and timestamps
+- Resume any past session to review or continue conversations
+- Switch between sessions without losing progress
+- Each session is preserved independently in the database
+
 ## Development
 
 ### Prerequisites
@@ -147,6 +156,15 @@ The application uses different storage solutions for different data:
 
 ### Cloudflare KV Namespaces
 - `USERS_KV` - Caches user authentication data for quick access (optional performance optimization)
+
+## Database Migration
+
+If you're upgrading from a previous version, you may need to migrate the database schema to support multi-session esquisse functionality. See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for detailed instructions.
+
+The migration adds:
+- Support for multiple esquisse sessions per user
+- Session naming (esquisse, esquisse2, etc.)
+- Active/inactive session tracking
 
 ## Troubleshooting
 

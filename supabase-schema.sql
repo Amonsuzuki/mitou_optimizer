@@ -68,21 +68,30 @@ GRANT ALL ON drafts TO authenticated;
 
 -- ESQUISSE_SESSIONS table to store esquisse conversation sessions
 -- This replaces the Cloudflare KV MEMORIES_KV namespace for esquisse data
+-- Updated to support multiple sessions per user
 
 CREATE TABLE IF NOT EXISTS esquisse_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  session_name TEXT NOT NULL,
   approach TEXT NOT NULL CHECK (approach IN ('forward', 'backward')),
   messages JSONB NOT NULL DEFAULT '[]'::jsonb,
   current_step INTEGER NOT NULL DEFAULT 0,
   completed BOOLEAN NOT NULL DEFAULT false,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT esquisse_sessions_user_id_unique UNIQUE (user_id)
+  CONSTRAINT esquisse_sessions_user_session_unique UNIQUE (user_id, session_name)
 );
 
 -- Create an index on user_id for faster lookups
 CREATE INDEX IF NOT EXISTS idx_esquisse_sessions_user_id ON esquisse_sessions(user_id);
+
+-- Create an index on session_name for faster lookups
+CREATE INDEX IF NOT EXISTS idx_esquisse_sessions_session_name ON esquisse_sessions(session_name);
+
+-- Create an index on is_active for filtering active sessions
+CREATE INDEX IF NOT EXISTS idx_esquisse_sessions_is_active ON esquisse_sessions(is_active);
 
 -- Create an index on updated_at for cleanup queries
 CREATE INDEX IF NOT EXISTS idx_esquisse_sessions_updated_at ON esquisse_sessions(updated_at);

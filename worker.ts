@@ -101,11 +101,14 @@ interface EsquisseMessage {
 }
 
 interface EsquisseSession {
+  id?: string;
   userId: string;
+  sessionName: string;
   approach: 'forward' | 'backward';  // 順算 or 逆算
   messages: EsquisseMessage[];
   currentStep: number;
   completed: boolean;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -328,6 +331,46 @@ function getInitialPrompt(approach: 'forward' | 'backward'): string {
 
 質問は一つずつ、親しみやすく、考えやすい形で行ってください。まず最初の質問をしてください。`;
   }
+}
+
+/**
+ * Generate a unique session name for a user
+ */
+async function generateSessionName(env: Env, userId: string): Promise<string> {
+  const supabase = getSupabaseClient(env);
+  
+  // Get all existing session names for this user
+  const { data, error } = await supabase
+    .from('esquisse_sessions')
+    .select('session_name')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  
+  if (error) {
+    console.error('Failed to fetch existing sessions:', error);
+    // If we can't fetch existing sessions, return default name
+    return 'esquisse';
+  }
+  
+  const existingNames = data?.map((s: any) => s.session_name) || [];
+  
+  // If no sessions exist, use 'esquisse'
+  if (existingNames.length === 0) {
+    return 'esquisse';
+  }
+  
+  // If 'esquisse' doesn't exist, use it
+  if (!existingNames.includes('esquisse')) {
+    return 'esquisse';
+  }
+  
+  // Otherwise, find the next available number
+  let counter = 2;
+  while (existingNames.includes(`esquisse${counter}`)) {
+    counter++;
+  }
+  
+  return `esquisse${counter}`;
 }
 
 /**
@@ -808,6 +851,104 @@ function getHTMLPage(submissionDeadline: string): string {
         
         .approach-btn.selected {
             background: #667eea;
+            color: white;
+        }
+        
+        .esquisse-session-selector {
+            margin-bottom: 15px;
+        }
+        
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .session-header h4 {
+            margin: 0;
+            font-size: 14px;
+            color: #667eea;
+        }
+        
+        .new-session-btn {
+            padding: 6px 12px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            background: white;
+            color: #667eea;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .new-session-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .session-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        .session-item {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .session-item:last-child {
+            border-bottom: none;
+        }
+        
+        .session-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .session-item.active {
+            background: #e3f2fd;
+            border-left: 4px solid #667eea;
+        }
+        
+        .session-info {
+            flex: 1;
+        }
+        
+        .session-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        .session-meta {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
+        
+        .session-status {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        .session-status.completed {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .session-status.in-progress {
+            background: #ff9800;
             color: white;
         }
         
@@ -1606,6 +1747,19 @@ function getHTMLPage(submissionDeadline: string): string {
                 <!-- Esquisse Panel (Left Side) -->
                 <div class="esquisse-panel" id="esquissePanel">
                     <h3>💭 エスキース（思考の過程）</h3>
+                    
+                    <!-- Session Selector -->
+                    <div id="sessionSelector" class="esquisse-session-selector" style="display: none;">
+                        <div class="session-header">
+                            <h4>📋 セッション</h4>
+                            <button type="button" class="new-session-btn" onclick="showNewSessionDialog()">
+                                + 新規
+                            </button>
+                        </div>
+                        <div class="session-list" id="sessionList">
+                            <!-- Sessions will be loaded here -->
+                        </div>
+                    </div>
                     
                     <!-- Approach Selection -->
                     <div id="approachSelection" class="esquisse-approach-selection">
@@ -2627,6 +2781,7 @@ function getHTMLPage(submissionDeadline: string): string {
                     showUserInfo(user);
                     enableSaveButton();
                     await loadDraft();
+                    await loadEsquisseSessions();
                 } else {
                     localStorage.removeItem('sessionToken');
                     showLoginButton();
@@ -2883,6 +3038,7 @@ function getHTMLPage(submissionDeadline: string): string {
                         showUserInfo(currentUser);
                         enableSaveButton();
                         await loadDraft();
+                        await loadEsquisseSessions();
                         showToast('ログインしました。 / Logged in successfully.', 'success');
                     } else {
                         throw new Error('Authentication failed');
@@ -3084,6 +3240,165 @@ function getHTMLPage(submissionDeadline: string): string {
         // ===== Esquisse Feature =====
         let esquisseSession = null;
         let esquisseApproach = null;
+        let esquisseSessions = [];
+        
+        // Load esquisse sessions
+        async function loadEsquisseSessions() {
+            if (!sessionToken) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/esquisse/list', {
+                    headers: {
+                        'Authorization': 'Bearer ' + sessionToken
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load sessions');
+                }
+                
+                const data = await response.json();
+                esquisseSessions = data.sessions || [];
+                
+                // Update UI
+                updateSessionList();
+                
+                // Show session selector if user has sessions
+                if (esquisseSessions.length > 0) {
+                    document.getElementById('sessionSelector').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Failed to load esquisse sessions:', error);
+            }
+        }
+        
+        // Update session list UI
+        function updateSessionList() {
+            const sessionList = document.getElementById('sessionList');
+            if (!sessionList) return;
+            
+            if (esquisseSessions.length === 0) {
+                sessionList.innerHTML = '<div style="padding: 15px; text-align: center; color: #999; font-size: 12px;">セッションがありません</div>';
+                return;
+            }
+            
+            sessionList.innerHTML = esquisseSessions.map(session => {
+                const isActive = session.isActive;
+                const statusClass = session.completed ? 'completed' : 'in-progress';
+                const statusText = session.completed ? '完了' : '進行中';
+                const date = new Date(session.updatedAt).toLocaleDateString('ja-JP', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const approach = session.approach === 'forward' ? '順算' : '逆算';
+                
+                // Escape for different contexts to prevent XSS:
+                // 1. HTML context (for display in DOM)
+                const escapedSessionName = escapeHtml(session.sessionName);
+                // 2. JavaScript string context (for onclick attribute)
+                // Note: We escape the original string, not the HTML-escaped one,
+                // because HTML entities aren't valid in JS strings
+                const jsEscapedSessionName = session.sessionName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                
+                return `
+                    <div class="session-item ${isActive ? 'active' : ''}" onclick="resumeEsquisseSession('${jsEscapedSessionName}')">
+                        <div class="session-info">
+                            <div class="session-name">${escapedSessionName}</div>
+                            <div class="session-meta">${approach} | ${date}</div>
+                        </div>
+                        <div class="session-status ${statusClass}">${statusText}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Show new session dialog (which is the approach selection)
+        function showNewSessionDialog() {
+            // Hide session selector
+            document.getElementById('sessionSelector').style.display = 'none';
+            
+            // Show approach selection
+            document.getElementById('approachSelection').style.display = 'block';
+            
+            // Hide conversation and input
+            document.getElementById('esquisseConversation').style.display = 'none';
+            document.getElementById('esquisseInputArea').style.display = 'none';
+            
+            // Clear current session
+            esquisseSession = null;
+        }
+        
+        // Resume an existing esquisse session
+        async function resumeEsquisseSession(sessionName) {
+            if (!sessionToken) {
+                showToast('ログインが必要です / Please login', 'warning');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/esquisse/resume', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + sessionToken
+                    },
+                    body: JSON.stringify({ sessionName })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to resume session');
+                }
+                
+                const data = await response.json();
+                esquisseSession = data.session;
+                
+                // Hide approach selection and session selector
+                document.getElementById('approachSelection').style.display = 'none';
+                document.getElementById('sessionSelector').style.display = 'block';
+                
+                // Show conversation and input area
+                document.getElementById('esquisseConversation').style.display = 'flex';
+                document.getElementById('esquisseInputArea').style.display = 'flex';
+                
+                // Clear and reload messages
+                const conversationDiv = document.getElementById('esquisseConversation');
+                conversationDiv.innerHTML = '';
+                
+                // Display all messages except system messages
+                esquisseSession.messages.forEach(msg => {
+                    if (msg.role !== 'system') {
+                        addEsquisseMessage(msg.role, msg.content);
+                    }
+                });
+                
+                // Update UI based on completion status
+                if (esquisseSession.completed) {
+                    document.getElementById('esquisseInput').disabled = true;
+                    document.getElementById('esquisseSendBtn').style.display = 'none';
+                    document.getElementById('esquisseApplyBtn').style.display = 'block';
+                    document.getElementById('esquisseStatus').textContent = '完了';
+                } else {
+                    document.getElementById('esquisseInput').disabled = false;
+                    document.getElementById('esquisseSendBtn').disabled = false;
+                    document.getElementById('esquisseSendBtn').style.display = 'block';
+                    document.getElementById('esquisseApplyBtn').style.display = 'none';
+                    document.getElementById('esquisseStatus').textContent = '';
+                }
+                
+                // Reload session list to update active status
+                await loadEsquisseSessions();
+                
+                showToast(`セッション "${sessionName}" を再開しました`, 'success');
+            } catch (error) {
+                console.error('Failed to resume session:', error);
+                showToast('セッションの再開に失敗しました / Failed to resume session', 'error');
+            }
+        }
         
         // Start esquisse conversation
         async function startEsquisse(approach) {
@@ -3098,13 +3413,22 @@ function getHTMLPage(submissionDeadline: string): string {
             // Hide approach selection
             document.getElementById('approachSelection').style.display = 'none';
             
+            // Clear conversation
+            const conversationDiv = document.getElementById('esquisseConversation');
+            conversationDiv.innerHTML = '';
+            
             // Show conversation and input area
             document.getElementById('esquisseConversation').style.display = 'flex';
             document.getElementById('esquisseInputArea').style.display = 'flex';
             
+            // Show session selector
+            document.getElementById('sessionSelector').style.display = 'block';
+            
             // Enable input
             document.getElementById('esquisseInput').disabled = false;
             document.getElementById('esquisseSendBtn').disabled = false;
+            document.getElementById('esquisseSendBtn').style.display = 'block';
+            document.getElementById('esquisseApplyBtn').style.display = 'none';
             
             // Update status
             document.getElementById('esquisseStatus').textContent = '考えを整理しています...';
@@ -3131,6 +3455,11 @@ function getHTMLPage(submissionDeadline: string): string {
                 // Display the first question
                 addEsquisseMessage('ai', data.question);
                 document.getElementById('esquisseStatus').textContent = '';
+                
+                // Reload sessions to show the new session
+                await loadEsquisseSessions();
+                
+                showToast(`新しいセッション "${esquisseSession.sessionName}" を開始しました`, 'success');
             } catch (error) {
                 console.error('Failed to start esquisse:', error);
                 const errorMsg = error.message || 'エスキースの開始に失敗しました / Failed to start esquisse';
@@ -3141,6 +3470,7 @@ function getHTMLPage(submissionDeadline: string): string {
                 document.getElementById('approachSelection').style.display = 'block';
                 document.getElementById('esquisseConversation').style.display = 'none';
                 document.getElementById('esquisseInputArea').style.display = 'none';
+                document.getElementById('sessionSelector').style.display = esquisseSessions.length > 0 ? 'block' : 'none';
             }
         }
         
@@ -3892,6 +4222,9 @@ export default {
           });
         }
         
+        // Generate a unique session name
+        const sessionName = await generateSessionName(env, user.id);
+        
         // Get initial prompt and first question from AI
         const systemPrompt = getInitialPrompt(approach);
         const aiResponse = await callOpenRouter(env, [
@@ -3913,19 +4246,35 @@ export default {
           }
         ];
         
-        // Save session to Supabase
+        // Deactivate all previous sessions for this user
         const supabase = getSupabaseClient(env);
+        const { error: deactivateError } = await supabase
+          .from('esquisse_sessions')
+          .update({ is_active: false })
+          .eq('user_id', user.id);
+        
+        if (deactivateError) {
+          console.error('Failed to deactivate previous sessions:', deactivateError);
+          return new Response(JSON.stringify({ error: 'Failed to prepare new session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Save new session to Supabase
+        const now = new Date().toISOString();
         const { data, error } = await supabase
           .from('esquisse_sessions')
-          .upsert({
+          .insert({
             user_id: user.id,
+            session_name: sessionName,
             approach: approach,
             messages: messages,
             current_step: 0,
             completed: false,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id'
+            is_active: true,
+            created_at: now,
+            updated_at: now
           })
           .select();
         
@@ -3941,7 +4290,7 @@ export default {
         const sessionData = data?.[0] ?? null;
         
         if (!sessionData) {
-          console.error('No session data returned after upsert');
+          console.error('No session data returned after insert');
           return new Response(JSON.stringify({ error: 'Failed to save session' }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -3950,11 +4299,14 @@ export default {
         
         // Build session response
         const session: EsquisseSession = {
+          id: sessionData.id,
           userId: user.id,
+          sessionName: sessionData.session_name,
           approach: sessionData.approach as 'forward' | 'backward',
           messages: sessionData.messages as EsquisseMessage[],
           currentStep: sessionData.current_step,
           completed: sessionData.completed,
+          isActive: sessionData.is_active,
           createdAt: sessionData.created_at,
           updatedAt: sessionData.updated_at
         };
@@ -3969,6 +4321,193 @@ export default {
         console.error('Start esquisse error:', error);
         return new Response(JSON.stringify({ 
           error: 'Failed to start esquisse',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // List esquisse sessions
+    if (url.pathname === '/api/esquisse/list' && request.method === 'GET') {
+      try {
+        // Verify authentication
+        const token = getAuthToken(request);
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const user = await verifySession(env, token);
+        if (!user) {
+          return new Response(JSON.stringify({ error: 'Invalid session' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Fetch all sessions for this user
+        const supabase = getSupabaseClient(env);
+        const { data, error } = await supabase
+          .from('esquisse_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Failed to fetch esquisse sessions:', error);
+          return new Response(JSON.stringify({ error: 'Failed to fetch sessions' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Convert to EsquisseSession format
+        const sessions: EsquisseSession[] = (data || []).map((s: any) => ({
+          id: s.id,
+          userId: s.user_id,
+          sessionName: s.session_name,
+          approach: s.approach as 'forward' | 'backward',
+          messages: s.messages as EsquisseMessage[],
+          currentStep: s.current_step,
+          completed: s.completed,
+          isActive: s.is_active,
+          createdAt: s.created_at,
+          updatedAt: s.updated_at
+        }));
+        
+        return new Response(JSON.stringify({ sessions }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('List esquisse sessions error:', error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to list sessions',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Resume esquisse session
+    if (url.pathname === '/api/esquisse/resume' && request.method === 'POST') {
+      try {
+        const { sessionName } = await request.json() as any;
+        
+        if (!sessionName) {
+          return new Response(JSON.stringify({ error: 'Missing sessionName' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Verify authentication
+        const token = getAuthToken(request);
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const user = await verifySession(env, token);
+        if (!user) {
+          return new Response(JSON.stringify({ error: 'Invalid session' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Fetch the specified session
+        const supabase = getSupabaseClient(env);
+        const { data: sessionData, error: fetchError } = await supabase
+          .from('esquisse_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('session_name', sessionName)
+          .maybeSingle();
+        
+        if (fetchError) {
+          console.error('Failed to fetch esquisse session:', fetchError);
+          return new Response(JSON.stringify({ error: 'Failed to fetch session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        if (!sessionData) {
+          return new Response(JSON.stringify({ error: 'Session not found' }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Switch active session
+        // NOTE: This uses two separate operations instead of a single transaction
+        // because Supabase JS client doesn't support transactions. In high-concurrency
+        // scenarios, a race condition could occur. However, this is acceptable for this
+        // use case as:
+        // 1. Users typically don't switch sessions frequently
+        // 2. Even if a race occurs, it only affects which session is active
+        // 3. No data loss occurs - all sessions remain intact
+        // For production with high concurrency, consider using Supabase Edge Functions
+        // with database transactions or optimistic locking.
+        
+        // First, deactivate all sessions for this user
+        const { error: deactivateError } = await supabase
+          .from('esquisse_sessions')
+          .update({ is_active: false })
+          .eq('user_id', user.id);
+        
+        if (deactivateError) {
+          console.error('Failed to deactivate sessions:', deactivateError);
+          return new Response(JSON.stringify({ error: 'Failed to update session status' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Then, activate the specified session
+        const { error: activateError } = await supabase
+          .from('esquisse_sessions')
+          .update({ is_active: true })
+          .eq('user_id', user.id)
+          .eq('session_name', sessionName);
+        
+        if (activateError) {
+          console.error('Failed to activate session:', activateError);
+          return new Response(JSON.stringify({ error: 'Failed to activate session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Build session response
+        const session: EsquisseSession = {
+          id: sessionData.id,
+          userId: user.id,
+          sessionName: sessionData.session_name,
+          approach: sessionData.approach as 'forward' | 'backward',
+          messages: sessionData.messages as EsquisseMessage[],
+          currentStep: sessionData.current_step,
+          completed: sessionData.completed,
+          isActive: true,
+          createdAt: sessionData.created_at,
+          updatedAt: sessionData.updated_at
+        };
+        
+        return new Response(JSON.stringify({ session }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Resume esquisse session error:', error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to resume session',
           details: error instanceof Error ? error.message : 'Unknown error'
         }), {
           status: 500,
@@ -4006,12 +4545,13 @@ export default {
           });
         }
         
-        // Load session from Supabase
+        // Load session from Supabase (get the active session)
         const supabase = getSupabaseClient(env);
         const { data: sessionData, error: fetchError } = await supabase
           .from('esquisse_sessions')
           .select('*')
           .eq('user_id', user.id)
+          .eq('is_active', true)
           .maybeSingle();
         
         if (fetchError) {
@@ -4023,8 +4563,8 @@ export default {
         }
         
         if (!sessionData) {
-          console.error('Esquisse session not found for user');
-          return new Response(JSON.stringify({ error: 'Session not found' }), {
+          console.error('No active esquisse session found for user');
+          return new Response(JSON.stringify({ error: 'No active session found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
@@ -4086,6 +4626,7 @@ export default {
             updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id)
+          .eq('is_active', true)
           .select();
         
         if (updateError) {
@@ -4109,11 +4650,14 @@ export default {
         
         // Build session response
         const session: EsquisseSession = {
+          id: sessionDataUpdated.id,
           userId: user.id,
+          sessionName: sessionDataUpdated.session_name,
           approach: sessionDataUpdated.approach as 'forward' | 'backward',
           messages: sessionDataUpdated.messages as EsquisseMessage[],
           currentStep: sessionDataUpdated.current_step,
           completed: sessionDataUpdated.completed,
+          isActive: sessionDataUpdated.is_active,
           createdAt: sessionDataUpdated.created_at,
           updatedAt: sessionDataUpdated.updated_at
         };
@@ -4166,12 +4710,13 @@ export default {
           });
         }
         
-        // Load session from Supabase
+        // Load session from Supabase (get the active session)
         const supabase = getSupabaseClient(env);
         const { data: sessionData, error: fetchError } = await supabase
           .from('esquisse_sessions')
           .select('*')
           .eq('user_id', user.id)
+          .eq('is_active', true)
           .maybeSingle();
         
         if (fetchError) {
@@ -4183,8 +4728,8 @@ export default {
         }
         
         if (!sessionData) {
-          console.error('Esquisse session not found for user');
-          return new Response(JSON.stringify({ error: 'Session not found' }), {
+          console.error('No active esquisse session found for user');
+          return new Response(JSON.stringify({ error: 'No active session found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
@@ -4199,11 +4744,14 @@ export default {
         
         // Build session object
         const session: EsquisseSession = {
+          id: sessionData.id,
           userId: user.id,
+          sessionName: sessionData.session_name,
           approach: sessionData.approach as 'forward' | 'backward',
           messages: sessionData.messages as EsquisseMessage[],
           currentStep: sessionData.current_step,
           completed: sessionData.completed,
+          isActive: sessionData.is_active,
           createdAt: sessionData.created_at,
           updatedAt: sessionData.updated_at
         };
