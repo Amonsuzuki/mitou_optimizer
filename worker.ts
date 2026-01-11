@@ -371,6 +371,7 @@ async function generateSessionName(env: Env, userId: string): Promise<string> {
   }
   
   return `esquisse${counter}`;
+}
 
 /**
  * Generate form data from esquisse conversation
@@ -3296,9 +3297,12 @@ function getHTMLPage(submissionDeadline: string): string {
                 });
                 const approach = session.approach === 'forward' ? '順算' : '逆算';
                 
-                // Escape HTML to prevent XSS
+                // Escape for different contexts to prevent XSS:
+                // 1. HTML context (for display in DOM)
                 const escapedSessionName = escapeHtml(session.sessionName);
-                // Escape for JavaScript string context (for onclick handler)
+                // 2. JavaScript string context (for onclick attribute)
+                // Note: We escape the original string, not the HTML-escaped one,
+                // because HTML entities aren't valid in JS strings
                 const jsEscapedSessionName = session.sessionName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 
                 return `
