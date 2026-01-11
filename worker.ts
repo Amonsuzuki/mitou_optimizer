@@ -3298,9 +3298,11 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 // Escape HTML to prevent XSS
                 const escapedSessionName = escapeHtml(session.sessionName);
+                // Escape for JavaScript string context (for onclick handler)
+                const jsEscapedSessionName = session.sessionName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 
                 return `
-                    <div class="session-item ${isActive ? 'active' : ''}" onclick="resumeEsquisseSession('${escapedSessionName}')">
+                    <div class="session-item ${isActive ? 'active' : ''}" onclick="resumeEsquisseSession('${jsEscapedSessionName}')">
                         <div class="session-info">
                             <div class="session-name">${escapedSessionName}</div>
                             <div class="session-meta">${approach} | ${date}</div>
@@ -4256,6 +4258,7 @@ export default {
         }
         
         // Save new session to Supabase
+        const now = new Date().toISOString();
         const { data, error } = await supabase
           .from('esquisse_sessions')
           .insert({
@@ -4266,7 +4269,8 @@ export default {
             current_step: 0,
             completed: false,
             is_active: true,
-            updated_at: new Date().toISOString()
+            created_at: now,
+            updated_at: now
           })
           .select();
         
@@ -4439,7 +4443,17 @@ export default {
           });
         }
         
-        // Atomically switch active session using a SQL function
+        // Switch active session
+        // NOTE: This uses two separate operations instead of a single transaction
+        // because Supabase JS client doesn't support transactions. In high-concurrency
+        // scenarios, a race condition could occur. However, this is acceptable for this
+        // use case as:
+        // 1. Users typically don't switch sessions frequently
+        // 2. Even if a race occurs, it only affects which session is active
+        // 3. No data loss occurs - all sessions remain intact
+        // For production with high concurrency, consider using Supabase Edge Functions
+        // with database transactions or optimistic locking.
+        
         // First, deactivate all sessions for this user
         const { error: deactivateError } = await supabase
           .from('esquisse_sessions')
