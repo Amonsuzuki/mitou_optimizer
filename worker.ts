@@ -101,11 +101,14 @@ interface EsquisseMessage {
 }
 
 interface EsquisseSession {
+  id?: string;
   userId: string;
+  sessionName: string;
   approach: 'forward' | 'backward';  // 順算 or 逆算
   messages: EsquisseMessage[];
   currentStep: number;
   completed: boolean;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -329,6 +332,45 @@ function getInitialPrompt(approach: 'forward' | 'backward'): string {
 質問は一つずつ、親しみやすく、考えやすい形で行ってください。まず最初の質問をしてください。`;
   }
 }
+
+/**
+ * Generate a unique session name for a user
+ */
+async function generateSessionName(env: Env, userId: string): Promise<string> {
+  const supabase = getSupabaseClient(env);
+  
+  // Get all existing session names for this user
+  const { data, error } = await supabase
+    .from('esquisse_sessions')
+    .select('session_name')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  
+  if (error) {
+    console.error('Failed to fetch existing sessions:', error);
+    // If we can't fetch existing sessions, return default name
+    return 'esquisse';
+  }
+  
+  const existingNames = data?.map((s: any) => s.session_name) || [];
+  
+  // If no sessions exist, use 'esquisse'
+  if (existingNames.length === 0) {
+    return 'esquisse';
+  }
+  
+  // If 'esquisse' doesn't exist, use it
+  if (!existingNames.includes('esquisse')) {
+    return 'esquisse';
+  }
+  
+  // Otherwise, find the next available number
+  let counter = 2;
+  while (existingNames.includes(`esquisse${counter}`)) {
+    counter++;
+  }
+  
+  return `esquisse${counter}`;
 
 /**
  * Generate form data from esquisse conversation
@@ -3892,6 +3934,9 @@ export default {
           });
         }
         
+        // Generate a unique session name
+        const sessionName = await generateSessionName(env, user.id);
+        
         // Get initial prompt and first question from AI
         const systemPrompt = getInitialPrompt(approach);
         const aiResponse = await callOpenRouter(env, [
@@ -3913,19 +3958,25 @@ export default {
           }
         ];
         
-        // Save session to Supabase
+        // Deactivate all previous sessions for this user
         const supabase = getSupabaseClient(env);
+        await supabase
+          .from('esquisse_sessions')
+          .update({ is_active: false })
+          .eq('user_id', user.id);
+        
+        // Save new session to Supabase
         const { data, error } = await supabase
           .from('esquisse_sessions')
-          .upsert({
+          .insert({
             user_id: user.id,
+            session_name: sessionName,
             approach: approach,
             messages: messages,
             current_step: 0,
             completed: false,
+            is_active: true,
             updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id'
           })
           .select();
         
@@ -3941,7 +3992,7 @@ export default {
         const sessionData = data?.[0] ?? null;
         
         if (!sessionData) {
-          console.error('No session data returned after upsert');
+          console.error('No session data returned after insert');
           return new Response(JSON.stringify({ error: 'Failed to save session' }), {
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -3950,11 +4001,14 @@ export default {
         
         // Build session response
         const session: EsquisseSession = {
+          id: sessionData.id,
           userId: user.id,
+          sessionName: sessionData.session_name,
           approach: sessionData.approach as 'forward' | 'backward',
           messages: sessionData.messages as EsquisseMessage[],
           currentStep: sessionData.current_step,
           completed: sessionData.completed,
+          isActive: sessionData.is_active,
           createdAt: sessionData.created_at,
           updatedAt: sessionData.updated_at
         };
@@ -3969,6 +4023,165 @@ export default {
         console.error('Start esquisse error:', error);
         return new Response(JSON.stringify({ 
           error: 'Failed to start esquisse',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // List esquisse sessions
+    if (url.pathname === '/api/esquisse/list' && request.method === 'GET') {
+      try {
+        // Verify authentication
+        const token = getAuthToken(request);
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const user = await verifySession(env, token);
+        if (!user) {
+          return new Response(JSON.stringify({ error: 'Invalid session' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Fetch all sessions for this user
+        const supabase = getSupabaseClient(env);
+        const { data, error } = await supabase
+          .from('esquisse_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Failed to fetch esquisse sessions:', error);
+          return new Response(JSON.stringify({ error: 'Failed to fetch sessions' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Convert to EsquisseSession format
+        const sessions: EsquisseSession[] = (data || []).map((s: any) => ({
+          id: s.id,
+          userId: s.user_id,
+          sessionName: s.session_name,
+          approach: s.approach as 'forward' | 'backward',
+          messages: s.messages as EsquisseMessage[],
+          currentStep: s.current_step,
+          completed: s.completed,
+          isActive: s.is_active,
+          createdAt: s.created_at,
+          updatedAt: s.updated_at
+        }));
+        
+        return new Response(JSON.stringify({ sessions }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('List esquisse sessions error:', error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to list sessions',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Resume esquisse session
+    if (url.pathname === '/api/esquisse/resume' && request.method === 'POST') {
+      try {
+        const { sessionName } = await request.json() as any;
+        
+        if (!sessionName) {
+          return new Response(JSON.stringify({ error: 'Missing sessionName' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Verify authentication
+        const token = getAuthToken(request);
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const user = await verifySession(env, token);
+        if (!user) {
+          return new Response(JSON.stringify({ error: 'Invalid session' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Fetch the specified session
+        const supabase = getSupabaseClient(env);
+        const { data: sessionData, error: fetchError } = await supabase
+          .from('esquisse_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('session_name', sessionName)
+          .maybeSingle();
+        
+        if (fetchError) {
+          console.error('Failed to fetch esquisse session:', fetchError);
+          return new Response(JSON.stringify({ error: 'Failed to fetch session' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        if (!sessionData) {
+          return new Response(JSON.stringify({ error: 'Session not found' }), {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Deactivate all other sessions and activate this one
+        await supabase
+          .from('esquisse_sessions')
+          .update({ is_active: false })
+          .eq('user_id', user.id);
+        
+        await supabase
+          .from('esquisse_sessions')
+          .update({ is_active: true })
+          .eq('user_id', user.id)
+          .eq('session_name', sessionName);
+        
+        // Build session response
+        const session: EsquisseSession = {
+          id: sessionData.id,
+          userId: user.id,
+          sessionName: sessionData.session_name,
+          approach: sessionData.approach as 'forward' | 'backward',
+          messages: sessionData.messages as EsquisseMessage[],
+          currentStep: sessionData.current_step,
+          completed: sessionData.completed,
+          isActive: true,
+          createdAt: sessionData.created_at,
+          updatedAt: sessionData.updated_at
+        };
+        
+        return new Response(JSON.stringify({ session }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Resume esquisse session error:', error);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to resume session',
           details: error instanceof Error ? error.message : 'Unknown error'
         }), {
           status: 500,
@@ -4006,12 +4219,13 @@ export default {
           });
         }
         
-        // Load session from Supabase
+        // Load session from Supabase (get the active session)
         const supabase = getSupabaseClient(env);
         const { data: sessionData, error: fetchError } = await supabase
           .from('esquisse_sessions')
           .select('*')
           .eq('user_id', user.id)
+          .eq('is_active', true)
           .maybeSingle();
         
         if (fetchError) {
@@ -4023,8 +4237,8 @@ export default {
         }
         
         if (!sessionData) {
-          console.error('Esquisse session not found for user');
-          return new Response(JSON.stringify({ error: 'Session not found' }), {
+          console.error('No active esquisse session found for user');
+          return new Response(JSON.stringify({ error: 'No active session found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
@@ -4086,6 +4300,7 @@ export default {
             updated_at: new Date().toISOString()
           })
           .eq('user_id', user.id)
+          .eq('is_active', true)
           .select();
         
         if (updateError) {
@@ -4109,11 +4324,14 @@ export default {
         
         // Build session response
         const session: EsquisseSession = {
+          id: sessionDataUpdated.id,
           userId: user.id,
+          sessionName: sessionDataUpdated.session_name,
           approach: sessionDataUpdated.approach as 'forward' | 'backward',
           messages: sessionDataUpdated.messages as EsquisseMessage[],
           currentStep: sessionDataUpdated.current_step,
           completed: sessionDataUpdated.completed,
+          isActive: sessionDataUpdated.is_active,
           createdAt: sessionDataUpdated.created_at,
           updatedAt: sessionDataUpdated.updated_at
         };
@@ -4166,12 +4384,13 @@ export default {
           });
         }
         
-        // Load session from Supabase
+        // Load session from Supabase (get the active session)
         const supabase = getSupabaseClient(env);
         const { data: sessionData, error: fetchError } = await supabase
           .from('esquisse_sessions')
           .select('*')
           .eq('user_id', user.id)
+          .eq('is_active', true)
           .maybeSingle();
         
         if (fetchError) {
@@ -4183,8 +4402,8 @@ export default {
         }
         
         if (!sessionData) {
-          console.error('Esquisse session not found for user');
-          return new Response(JSON.stringify({ error: 'Session not found' }), {
+          console.error('No active esquisse session found for user');
+          return new Response(JSON.stringify({ error: 'No active session found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
@@ -4199,11 +4418,14 @@ export default {
         
         // Build session object
         const session: EsquisseSession = {
+          id: sessionData.id,
           userId: user.id,
+          sessionName: sessionData.session_name,
           approach: sessionData.approach as 'forward' | 'backward',
           messages: sessionData.messages as EsquisseMessage[],
           currentStep: sessionData.current_step,
           completed: sessionData.completed,
+          isActive: sessionData.is_active,
           createdAt: sessionData.created_at,
           updatedAt: sessionData.updated_at
         };
