@@ -858,7 +858,8 @@ function getHTMLPage(submissionDeadline: string): string {
             border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
-            resize: vertical;
+            resize: none;
+            overflow: hidden;
         }
         
         .esquisse-input:focus {
@@ -1118,7 +1119,8 @@ function getHTMLPage(submissionDeadline: string): string {
         
         textarea {
             min-height: 120px;
-            resize: vertical;
+            resize: none;
+            overflow: hidden;
         }
         
         textarea.small {
@@ -2836,6 +2838,10 @@ function getHTMLPage(submissionDeadline: string): string {
                             const field = document.getElementById(key);
                             if (field && draft.data[key]) {
                                 field.value = draft.data[key];
+                                // Auto-resize if it's a textarea
+                                if (field.tagName.toUpperCase() === 'TEXTAREA') {
+                                    autoResizeTextarea(field);
+                                }
                                 // Update localStorage as well
                                 localStorage.setItem(key, draft.data[key]);
                             }
@@ -3158,6 +3164,8 @@ function getHTMLPage(submissionDeadline: string): string {
             
             // Clear input
             input.value = '';
+            // Reset textarea height after clearing
+            autoResizeTextarea(input);
             
             // Disable input while processing
             input.disabled = true;
@@ -3261,6 +3269,10 @@ function getHTMLPage(submissionDeadline: string): string {
                         const field = document.getElementById(key);
                         if (field && data.formData[key]) {
                             field.value = data.formData[key];
+                            // Auto-resize if it's a textarea
+                            if (field.tagName.toUpperCase() === 'TEXTAREA') {
+                                autoResizeTextarea(field);
+                            }
                             // Also update localStorage
                             localStorage.setItem(key, data.formData[key]);
                         }
@@ -3296,26 +3308,64 @@ function getHTMLPage(submissionDeadline: string): string {
                         }
                     }
                 });
+                
+                // Add auto-resize functionality to esquisse input
+                esquisseInput.addEventListener('input', function() {
+                    autoResizeTextarea(this);
+                });
+                
+                // Initial resize
+                autoResizeTextarea(esquisseInput);
             }
         });
         
+        // Auto-resize textarea function
+        function autoResizeTextarea(textarea) {
+            // Validate input
+            if (!textarea || textarea.tagName.toUpperCase() !== 'TEXTAREA') {
+                return;
+            }
+            // Reset height to auto to get the correct scrollHeight
+            textarea.style.height = 'auto';
+            // Set the height to match the content
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+        
         // Auto-save to localStorage
         const inputs = document.querySelectorAll('input, textarea');
+        const resizedTextareas = new Set();
+        
         inputs.forEach(input => {
             // Load saved value
             const saved = localStorage.getItem(input.id);
             if (saved) {
                 input.value = saved;
+                // Auto-resize if it's a textarea
+                if (input.tagName.toUpperCase() === 'TEXTAREA') {
+                    autoResizeTextarea(input);
+                    resizedTextareas.add(input);
+                }
             }
             
             // Save on change
             input.addEventListener('input', function() {
                 localStorage.setItem(this.id, this.value);
+                // Auto-resize if it's a textarea
+                if (this.tagName.toUpperCase() === 'TEXTAREA') {
+                    autoResizeTextarea(this);
+                }
                 // Mark form as modified when any input changes
                 if (isFormSaved) {
                     markFormAsModified();
                 }
             });
+        });
+        
+        // Initial resize for textareas that weren't already resized
+        document.querySelectorAll('textarea').forEach(textarea => {
+            if (!resizedTextareas.has(textarea)) {
+                autoResizeTextarea(textarea);
+            }
         });
     </script>
 </body>
