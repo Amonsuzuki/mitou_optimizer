@@ -844,6 +844,47 @@ function getHTMLPage(submissionDeadline: string): string {
             font-style: italic;
         }
         
+        .esquisse-message.thinking {
+            background: #e8eaf6;
+            border-left: 4px solid #5c6bc0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .thinking-dots {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        
+        .thinking-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #5c6bc0;
+            animation: thinkingPulse 1.4s infinite ease-in-out;
+        }
+        
+        .thinking-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        
+        .thinking-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        
+        @keyframes thinkingPulse {
+            0%, 80%, 100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+            40% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
         .esquisse-input-area {
             display: flex;
             flex-direction: column;
@@ -1605,7 +1646,7 @@ function getHTMLPage(submissionDeadline: string): string {
             <div class="split-layout">
                 <!-- Esquisse Panel (Left Side) -->
                 <div class="esquisse-panel" id="esquissePanel">
-                    <h3>💭 エスキース（思考の過程）</h3>
+                    <h3 id="esquisseTitle">💭 エスキース（思考の過程）</h3>
                     
                     <!-- Approach Selection -->
                     <div id="approachSelection" class="esquisse-approach-selection">
@@ -2300,6 +2341,10 @@ function getHTMLPage(submissionDeadline: string): string {
             const formLabels = editingTab.querySelectorAll('label');
             const formInputs = editingTab.querySelectorAll('input, textarea');
             
+            // Update esquisse title
+            const esquisseTitle = document.getElementById('esquisseTitle');
+            if (esquisseTitle) esquisseTitle.textContent = t.esquisseTitle || '💭 エスキース（思考の過程）';
+            
             if (formLabels.length > 0) {
                 if (formLabels[0]) formLabels[0].textContent = t.projectName;
                 const projectNameInput = document.getElementById('projectName');
@@ -2311,7 +2356,7 @@ function getHTMLPage(submissionDeadline: string): string {
             }
             
             const editingH2s = editingTab.querySelectorAll('h2');
-            const editingH3s = editingTab.querySelectorAll('h3');
+            const formH3s = editingTab.querySelectorAll('.form-panel h3');
             
             if (editingH2s.length > 0 && editingH2s[0]) {
                 editingH2s[0].textContent = t.section1;
@@ -2323,8 +2368,8 @@ function getHTMLPage(submissionDeadline: string): string {
                 if (section1_1Input) section1_1Input.placeholder = t.section1_1_placeholder;
             }
             
-            if (editingH3s.length > 0 && editingH3s[0]) {
-                editingH3s[0].textContent = t.section1_2;
+            if (formH3s.length > 0 && formH3s[0]) {
+                formH3s[0].textContent = t.section1_2;
             }
             
             if (formLabels.length > 3 && formLabels[3]) {
@@ -2383,8 +2428,8 @@ function getHTMLPage(submissionDeadline: string): string {
                 editingH2s[3].textContent = t.section4;
             }
             
-            if (editingH3s.length > 1 && editingH3s[1]) {
-                editingH3s[1].textContent = t.section4_1;
+            if (formH3s.length > 1 && formH3s[1]) {
+                formH3s[1].textContent = t.section4_1;
             }
             
             if (formLabels.length > 10 && formLabels[10]) {
@@ -2417,8 +2462,8 @@ function getHTMLPage(submissionDeadline: string): string {
                 if (section4_3Input) section4_3Input.placeholder = t.section4_3_placeholder;
             }
             
-            if (editingH3s.length > 2 && editingH3s[2]) {
-                editingH3s[2].textContent = t.section4_4;
+            if (formH3s.length > 2 && formH3s[2]) {
+                formH3s[2].textContent = t.section4_4;
             }
             
             if (formLabels.length > 15 && formLabels[15]) {
@@ -3106,8 +3151,8 @@ function getHTMLPage(submissionDeadline: string): string {
             document.getElementById('esquisseInput').disabled = false;
             document.getElementById('esquisseSendBtn').disabled = false;
             
-            // Update status
-            document.getElementById('esquisseStatus').textContent = '考えを整理しています...';
+            // Show thinking indicator
+            showThinkingIndicator();
             
             try {
                 const response = await fetch('/api/esquisse/start', {
@@ -3128,11 +3173,18 @@ function getHTMLPage(submissionDeadline: string): string {
                 const data = await response.json();
                 esquisseSession = data.session;
                 
+                // Remove thinking indicator
+                removeThinkingIndicator();
+                
                 // Display the first question
                 addEsquisseMessage('ai', data.question);
                 document.getElementById('esquisseStatus').textContent = '';
             } catch (error) {
                 console.error('Failed to start esquisse:', error);
+                
+                // Remove thinking indicator
+                removeThinkingIndicator();
+                
                 const errorMsg = error.message || 'エスキースの開始に失敗しました / Failed to start esquisse';
                 showToast(errorMsg, 'error');
                 document.getElementById('esquisseStatus').textContent = 'エラーが発生しました';
@@ -3170,7 +3222,9 @@ function getHTMLPage(submissionDeadline: string): string {
             // Disable input while processing
             input.disabled = true;
             document.getElementById('esquisseSendBtn').disabled = true;
-            document.getElementById('esquisseStatus').textContent = 'AIが考えています...';
+            
+            // Show thinking indicator in conversation
+            showThinkingIndicator();
             
             try {
                 const response = await fetch('/api/esquisse/answer', {
@@ -3191,6 +3245,9 @@ function getHTMLPage(submissionDeadline: string): string {
                 
                 const data = await response.json();
                 esquisseSession = data.session;
+                
+                // Remove thinking indicator
+                removeThinkingIndicator();
                 
                 // Display AI response
                 if (data.question) {
@@ -3216,6 +3273,10 @@ function getHTMLPage(submissionDeadline: string): string {
                 }
             } catch (error) {
                 console.error('Failed to send answer:', error);
+                
+                // Remove thinking indicator
+                removeThinkingIndicator();
+                
                 showToast('回答の送信に失敗しました / Failed to send answer', 'error');
                 input.disabled = false;
                 document.getElementById('esquisseSendBtn').disabled = false;
@@ -3233,6 +3294,45 @@ function getHTMLPage(submissionDeadline: string): string {
             
             // Scroll to bottom
             conversation.scrollTop = conversation.scrollHeight;
+        }
+        
+        // Show thinking indicator in conversation
+        function showThinkingIndicator() {
+            const conversation = document.getElementById('esquisseConversation');
+            
+            // Remove any existing thinking indicator first
+            removeThinkingIndicator();
+            
+            const thinkingMessage = document.createElement('div');
+            thinkingMessage.className = 'esquisse-message thinking';
+            thinkingMessage.id = 'thinkingIndicator';
+            
+            const text = document.createElement('span');
+            text.textContent = 'AIが考えています';
+            
+            const dotsContainer = document.createElement('div');
+            dotsContainer.className = 'thinking-dots';
+            
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'thinking-dot';
+                dotsContainer.appendChild(dot);
+            }
+            
+            thinkingMessage.appendChild(text);
+            thinkingMessage.appendChild(dotsContainer);
+            conversation.appendChild(thinkingMessage);
+            
+            // Scroll to bottom
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+        
+        // Remove thinking indicator from conversation
+        function removeThinkingIndicator() {
+            const indicator = document.getElementById('thinkingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
         }
         
         // Apply esquisse to form
